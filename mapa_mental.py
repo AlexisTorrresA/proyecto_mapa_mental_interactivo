@@ -319,6 +319,541 @@ nodes = {
         "size": 14,
         "title": "Búsqueda de resultados equitativos para distintos grupos de usuarios.",
     },
+
+        # =============================
+    # IA / ML avanzado
+    # =============================
+    "Aprendizaje Semi-Supervisado": {
+        "color": "#4ea8de",
+        "size": 18,
+        "title": "Usa una pequeña parte de datos etiquetados junto con muchos datos no etiquetados.",
+    },
+    "Aprendizaje Auto-Supervisado": {
+        "color": "#4ea8de",
+        "size": 18,
+        "title": "El modelo genera señales de entrenamiento a partir de los propios datos sin etiquetas manuales.",
+    },
+    "Aprendizaje Online": {
+        "color": "#4ea8de",
+        "size": 16,
+        "title": "Entrenamiento incremental que actualiza el modelo a medida que llegan nuevos datos.",
+    },
+    "Meta-Learning": {
+        "color": "#4ea8de",
+        "size": 16,
+        "title": "Enfoque donde los modelos aprenden a aprender nuevas tareas más rápido.",
+    },
+    "Ensemble Learning": {
+        "color": "#4ea8de",
+        "size": 16,
+        "title": "Combina varios modelos para mejorar robustez, estabilidad y precisión.",
+    },
+    "AdaBoost": {
+        "color": "#5dade2",
+        "size": 14,
+        "title": "Algoritmo de boosting que ajusta el peso de observaciones difíciles en cada iteración.",
+    },
+    "Gradient Boosting": {
+        "color": "#5dade2",
+        "size": 14,
+        "title": "Construye modelos secuenciales que corrigen errores previos mediante gradientes.",
+    },
+    "LightGBM": {
+        "color": "#5dade2",
+        "size": 14,
+        "title": "Implementación eficiente de gradient boosting optimizada para rendimiento y escala.",
+    },
+    "CatBoost": {
+        "color": "#5dade2",
+        "size": 14,
+        "title": "Algoritmo de boosting fuerte en variables categóricas con poco preprocesamiento.",
+    },
+    "Naive Bayes": {
+        "color": "#5dade2",
+        "size": 14,
+        "title": "Clasificador probabilístico basado en el teorema de Bayes con supuestos de independencia.",
+    },
+    "LDA": {
+        "color": "#5dade2",
+        "size": 14,
+        "title": "Linear Discriminant Analysis para clasificación y reducción dimensional supervisada.",
+    },
+    "QDA": {
+        "color": "#5dade2",
+        "size": 14,
+        "title": "Quadratic Discriminant Analysis, variante no lineal basada en distribuciones gaussianas.",
+    },
+    "Isolation Forest": {
+        "color": "#5dade2",
+        "size": 14,
+        "title": "Método para detección de anomalías aislando observaciones raras.",
+    },
+    "One-Class SVM": {
+        "color": "#5dade2",
+        "size": 14,
+        "title": "Algoritmo para detección de novedad o anomalías con ejemplos de una sola clase.",
+    },
+    "t-SNE": {
+        "color": "#5dade2",
+        "size": 14,
+        "title": "Técnica no lineal de reducción de dimensionalidad útil para visualización.",
+    },
+    "UMAP": {
+        "color": "#5dade2",
+        "size": 14,
+        "title": "Reducción dimensional moderna, rápida y útil para explorar estructuras complejas.",
+    },
+
+    # =============================
+    # Deep Learning avanzado
+    # =============================
+    "Transfer Learning": {
+        "color": "#ff6b6b",
+        "size": 16,
+        "title": "Reutiliza modelos preentrenados para acelerar aprendizaje en nuevas tareas.",
+    },
+    "Attention": {
+        "color": "#ff8787",
+        "size": 14,
+        "title": "Mecanismo que permite al modelo enfocarse en partes relevantes de la entrada.",
+    },
+    "Self-Attention": {
+        "color": "#ff8787",
+        "size": 14,
+        "title": "Tipo de atención donde una secuencia se relaciona consigo misma.",
+    },
+    "ResNet": {
+        "color": "#ff8787",
+        "size": 14,
+        "title": "Arquitectura profunda con conexiones residuales que facilita el entrenamiento.",
+    },
+    "U-Net": {
+        "color": "#ff8787",
+        "size": 14,
+        "title": "Arquitectura muy usada en segmentación semántica de imágenes.",
+    },
+    "GNN": {
+        "color": "#ff8787",
+        "size": 14,
+        "title": "Graph Neural Networks para aprender sobre nodos, enlaces y estructuras de grafos.",
+    },
+    "VAE": {
+        "color": "#ff8787",
+        "size": 14,
+        "title": "Variational Autoencoder, modelo generativo probabilístico basado en autoencoders.",
+    },
+    "LoRA": {
+        "color": "#ff8787",
+        "size": 14,
+        "title": "Técnica eficiente para ajustar modelos grandes modificando pocas matrices.",
+    },
+    "PEFT": {
+        "color": "#ff8787",
+        "size": 14,
+        "title": "Parameter-Efficient Fine-Tuning: familia de métodos para ajustar LLMs con menor costo.",
+    },
+
+    # =============================
+    # NLP / LLM / GenAI
+    # =============================
+    "Prompt Engineering": {
+        "color": "#72efdd",
+        "size": 14,
+        "title": "Diseño estratégico de instrucciones para guiar el comportamiento de modelos generativos.",
+    },
+    "Zero-Shot": {
+        "color": "#72efdd",
+        "size": 14,
+        "title": "Capacidad de resolver tareas sin ejemplos específicos durante ajuste.",
+    },
+    "Few-Shot": {
+        "color": "#72efdd",
+        "size": 14,
+        "title": "Uso de pocos ejemplos en el prompt para orientar la respuesta del modelo.",
+    },
+    "In-Context Learning": {
+        "color": "#72efdd",
+        "size": 14,
+        "title": "Aprendizaje implícito a partir del contexto suministrado en la entrada.",
+    },
+    "Instruction Tuning": {
+        "color": "#72efdd",
+        "size": 14,
+        "title": "Ajuste de modelos con pares instrucción-respuesta para seguir órdenes mejor.",
+    },
+    "RLHF": {
+        "color": "#72efdd",
+        "size": 14,
+        "title": "Reinforcement Learning from Human Feedback para alinear salidas de modelos.",
+    },
+    "Agentes IA": {
+        "color": "#72efdd",
+        "size": 16,
+        "title": "Sistemas que combinan modelos, herramientas, memoria y planificación para actuar.",
+    },
+    "Tool Calling": {
+        "color": "#72efdd",
+        "size": 14,
+        "title": "Capacidad de un modelo para usar funciones, APIs o herramientas externas.",
+    },
+    "Memoria": {
+        "color": "#72efdd",
+        "size": 14,
+        "title": "Mecanismos para conservar contexto, hechos o historial útil durante interacciones.",
+    },
+    "Vector DB": {
+        "color": "#72efdd",
+        "size": 14,
+        "title": "Base orientada a búsquedas por similitud sobre embeddings.",
+    },
+    "Chunking": {
+        "color": "#72efdd",
+        "size": 14,
+        "title": "División de documentos en fragmentos para recuperación y contexto eficiente.",
+    },
+    "Re-ranking": {
+        "color": "#72efdd",
+        "size": 14,
+        "title": "Reordenamiento de resultados recuperados para mejorar relevancia.",
+    },
+    "Hallucinations": {
+        "color": "#72efdd",
+        "size": 14,
+        "title": "Respuestas incorrectas o inventadas que parecen plausibles.",
+    },
+    "Guardrails": {
+        "color": "#72efdd",
+        "size": 14,
+        "title": "Restricciones, validaciones y políticas para controlar salidas de modelos.",
+    },
+    "Evaluación LLM": {
+        "color": "#72efdd",
+        "size": 14,
+        "title": "Métricas y pruebas para medir calidad, seguridad y utilidad de respuestas.",
+    },
+
+    # =============================
+    # Visión / multimodal
+    # =============================
+    "OCR": {
+        "color": "#80ed99",
+        "size": 14,
+        "title": "Reconocimiento óptico de caracteres para extraer texto desde imágenes o PDFs.",
+    },
+    "Seguimiento de Objetos": {
+        "color": "#80ed99",
+        "size": 14,
+        "title": "Seguimiento temporal de objetos a través de secuencias de video.",
+    },
+    "Pose Estimation": {
+        "color": "#80ed99",
+        "size": 14,
+        "title": "Estimación de puntos clave del cuerpo u objetos en imágenes y video.",
+    },
+    "Multimodal": {
+        "color": "#80ed99",
+        "size": 16,
+        "title": "Modelos o sistemas que combinan texto, imagen, audio, video u otras señales.",
+    },
+
+    # =============================
+    # MLOps / Producción
+    # =============================
+    "Feature Engineering": {
+        "color": "#c77dff",
+        "size": 14,
+        "title": "Transformación de variables para mejorar el desempeño de modelos.",
+    },
+    "Feature Store": {
+        "color": "#c77dff",
+        "size": 14,
+        "title": "Sistema para almacenar y servir variables reutilizables de entrenamiento e inferencia.",
+    },
+    "Experiment Tracking": {
+        "color": "#c77dff",
+        "size": 14,
+        "title": "Registro de métricas, parámetros, modelos y resultados experimentales.",
+    },
+    "Model Registry": {
+        "color": "#c77dff",
+        "size": 14,
+        "title": "Catálogo versionado de modelos aprobados para pruebas o producción.",
+    },
+    "CI/CD": {
+        "color": "#c77dff",
+        "size": 14,
+        "title": "Integración y despliegue continuo para automatizar pruebas y liberaciones.",
+    },
+    "A/B Testing": {
+        "color": "#c77dff",
+        "size": 14,
+        "title": "Comparación controlada entre variantes para medir impacto real.",
+    },
+    "Inferencia en Tiempo Real": {
+        "color": "#c77dff",
+        "size": 14,
+        "title": "Predicción inmediata a baja latencia para aplicaciones online.",
+    },
+    "Inferencia Batch": {
+        "color": "#c77dff",
+        "size": 14,
+        "title": "Predicción masiva sobre grandes volúmenes de datos en procesos programados.",
+    },
+    "Canary Deployment": {
+        "color": "#c77dff",
+        "size": 14,
+        "title": "Despliegue gradual a una pequeña parte del tráfico antes de escalar.",
+    },
+    "Observabilidad": {
+        "color": "#c77dff",
+        "size": 14,
+        "title": "Monitoreo profundo de logs, métricas, trazas y comportamiento del sistema/modelo.",
+    },
+
+    # =============================
+    # Data Engineering / Big Data
+    # =============================
+    "Data Warehouse": {
+        "color": "#a8dadc",
+        "size": 14,
+        "title": "Repositorio estructurado optimizado para análisis y BI.",
+    },
+    "ELT": {
+        "color": "#a8dadc",
+        "size": 14,
+        "title": "Variante donde los datos se cargan primero y luego se transforman.",
+    },
+    "Streaming": {
+        "color": "#a8dadc",
+        "size": 14,
+        "title": "Procesamiento continuo de eventos y datos en movimiento.",
+    },
+    "Kafka": {
+        "color": "#a8dadc",
+        "size": 14,
+        "title": "Plataforma distribuida para mensajería, eventos y pipelines en tiempo real.",
+    },
+    "Airflow": {
+        "color": "#a8dadc",
+        "size": 14,
+        "title": "Orquestador de workflows y pipelines de datos.",
+    },
+    "Data Governance": {
+        "color": "#a8dadc",
+        "size": 14,
+        "title": "Políticas y prácticas para calidad, trazabilidad, acceso y uso de datos.",
+    },
+    "Calidad de Datos": {
+        "color": "#a8dadc",
+        "size": 14,
+        "title": "Medición y aseguramiento de integridad, consistencia y utilidad del dato.",
+    },
+
+    # =============================
+    # Cloud
+    # =============================
+    "Cloud Computing": {
+        "color": "#ffd166",
+        "size": 24,
+        "title": "Uso de servicios de infraestructura, plataforma y software bajo demanda.",
+    },
+    "AWS": {
+        "color": "#ffd166",
+        "size": 18,
+        "title": "Proveedor cloud con servicios para cómputo, almacenamiento, IA y despliegue.",
+    },
+    "Azure": {
+        "color": "#ffd166",
+        "size": 18,
+        "title": "Plataforma cloud de Microsoft con servicios de datos, IA y aplicaciones.",
+    },
+    "GCP": {
+        "color": "#ffd166",
+        "size": 18,
+        "title": "Google Cloud Platform, fuerte en datos, analítica, contenedores y ML.",
+    },
+    "Huawei Cloud": {
+        "color": "#ffd166",
+        "size": 18,
+        "title": "Proveedor cloud con servicios de infraestructura, almacenamiento y AI/cloud-native.",
+    },
+    "IaaS": {
+        "color": "#ffd166",
+        "size": 14,
+        "title": "Infrastructure as a Service: máquinas, redes y almacenamiento administrables.",
+    },
+    "PaaS": {
+        "color": "#ffd166",
+        "size": 14,
+        "title": "Platform as a Service: entornos listos para desplegar aplicaciones.",
+    },
+    "SaaS": {
+        "color": "#ffd166",
+        "size": 14,
+        "title": "Software as a Service: aplicaciones consumidas directamente como servicio.",
+    },
+    "Serverless": {
+        "color": "#ffd166",
+        "size": 14,
+        "title": "Ejecución de funciones o apps sin administrar servidores directamente.",
+    },
+    "Kubernetes": {
+        "color": "#ffd166",
+        "size": 14,
+        "title": "Orquestador de contenedores para despliegue, escalado y operación de servicios.",
+    },
+    "Terraform": {
+        "color": "#ffd166",
+        "size": 14,
+        "title": "Infraestructura como código para definir recursos cloud de forma reproducible.",
+    },
+    "IAM": {
+        "color": "#ffd166",
+        "size": 14,
+        "title": "Gestión de identidades, roles y permisos en plataformas cloud.",
+    },
+    "Object Storage": {
+        "color": "#ffd166",
+        "size": 14,
+        "title": "Almacenamiento escalable de objetos como archivos, datasets y artefactos.",
+    },
+    "Cloud Security": {
+        "color": "#ffd166",
+        "size": 14,
+        "title": "Seguridad de identidades, redes, secretos, cifrado y cumplimiento en la nube.",
+    },
+
+    # =============================
+    # Desarrollo de software
+    # =============================
+    "Desarrollo de Software": {
+        "color": "#06d6a0",
+        "size": 24,
+        "title": "Disciplina para diseñar, construir, probar y mantener sistemas y aplicaciones.",
+    },
+    "Backend": {
+        "color": "#06d6a0",
+        "size": 14,
+        "title": "Lógica de negocio, APIs, datos y procesamiento del lado servidor.",
+    },
+    "Frontend": {
+        "color": "#06d6a0",
+        "size": 14,
+        "title": "Interfaces de usuario y experiencia visual del lado cliente.",
+    },
+    "APIs": {
+        "color": "#06d6a0",
+        "size": 14,
+        "title": "Interfaces para comunicación entre sistemas y servicios.",
+    },
+    "Microservicios": {
+        "color": "#06d6a0",
+        "size": 14,
+        "title": "Arquitectura basada en servicios pequeños, desacoplados y desplegables por separado.",
+    },
+    "Testing": {
+        "color": "#06d6a0",
+        "size": 14,
+        "title": "Pruebas unitarias, integración y validación para asegurar calidad.",
+    },
+    "Git": {
+        "color": "#06d6a0",
+        "size": 14,
+        "title": "Sistema de control de versiones para colaboración y trazabilidad del código.",
+    },
+    "Arquitectura de Software": {
+        "color": "#06d6a0",
+        "size": 14,
+        "title": "Diseño de componentes, integraciones, escalabilidad y mantenibilidad del sistema.",
+    },
+
+    # =============================
+    # Responsible AI / seguridad
+    # =============================
+    "Robustez": {
+        "color": "#f28482",
+        "size": 14,
+        "title": "Capacidad del sistema para resistir ruido, ataques o cambios inesperados.",
+    },
+    "Seguridad IA": {
+        "color": "#f28482",
+        "size": 14,
+        "title": "Protección contra ataques, fugas, abuso y comportamientos inseguros en sistemas de IA.",
+    },
+    "Gobernanza de IA": {
+        "color": "#f28482",
+        "size": 14,
+        "title": "Políticas, controles y trazabilidad para operar IA de manera responsable.",
+    },
+
+    # =============================
+    # Quantum Computing
+    # =============================
+    "Computación Cuántica": {
+        "color": "#9b5de5",
+        "size": 24,
+        "title": "Paradigma de cómputo basado en qubits, superposición y entrelazamiento.",
+    },
+    "Qubits": {
+        "color": "#9b5de5",
+        "size": 16,
+        "title": "Unidad básica de información cuántica.",
+    },
+    "Superposición": {
+        "color": "#9b5de5",
+        "size": 14,
+        "title": "Propiedad que permite a un estado cuántico combinar múltiples posibilidades.",
+    },
+    "Entrelazamiento": {
+        "color": "#9b5de5",
+        "size": 14,
+        "title": "Correlación cuántica fuerte entre qubits.",
+    },
+    "Puertas Cuánticas": {
+        "color": "#9b5de5",
+        "size": 14,
+        "title": "Operaciones que transforman estados cuánticos en un circuito.",
+    },
+    "Circuitos Cuánticos": {
+        "color": "#9b5de5",
+        "size": 14,
+        "title": "Secuencia de puertas cuánticas aplicada a qubits.",
+    },
+    "Medición Cuántica": {
+        "color": "#9b5de5",
+        "size": 14,
+        "title": "Proceso de observación que colapsa el estado cuántico a un resultado clásico.",
+    },
+    "Algoritmo de Grover": {
+        "color": "#9b5de5",
+        "size": 14,
+        "title": "Algoritmo cuántico para búsqueda con aceleración cuadrática idealizada.",
+    },
+    "Algoritmo de Shor": {
+        "color": "#9b5de5",
+        "size": 14,
+        "title": "Algoritmo cuántico conocido por factorizar enteros en ciertos contextos.",
+    },
+    "QAOA": {
+        "color": "#9b5de5",
+        "size": 14,
+        "title": "Quantum Approximate Optimization Algorithm, método híbrido para optimización.",
+    },
+    "VQE": {
+        "color": "#9b5de5",
+        "size": 14,
+        "title": "Variational Quantum Eigensolver, algoritmo híbrido usado en simulación cuántica.",
+    },
+    "Qiskit": {
+        "color": "#9b5de5",
+        "size": 14,
+        "title": "SDK popular para programación y experimentación en computación cuántica.",
+    },
+    "Quantum Machine Learning": {
+        "color": "#9b5de5",
+        "size": 16,
+        "title": "Intersección entre computación cuántica y aprendizaje automático.",
+    },
 }
 
 # -----------------------------
@@ -393,6 +928,171 @@ edges = [
     ("Visión Artificial", "Deep Learning"),
     ("Responsible AI", "Machine Learning"),
     ("Responsible AI", "Deep Learning"),
+        # IA y ML
+    ("Machine Learning", "Aprendizaje Semi-Supervisado"),
+    ("Machine Learning", "Aprendizaje Auto-Supervisado"),
+    ("Machine Learning", "Aprendizaje Online"),
+    ("Machine Learning", "Meta-Learning"),
+    ("Machine Learning", "Ensemble Learning"),
+    ("Aprendizaje Supervisado", "Naive Bayes"),
+    ("Aprendizaje Supervisado", "LDA"),
+    ("Aprendizaje Supervisado", "QDA"),
+    ("Aprendizaje Supervisado", "AdaBoost"),
+    ("Aprendizaje Supervisado", "Gradient Boosting"),
+    ("Aprendizaje Supervisado", "LightGBM"),
+    ("Aprendizaje Supervisado", "CatBoost"),
+    ("Aprendizaje No Supervisado", "Isolation Forest"),
+    ("Aprendizaje No Supervisado", "One-Class SVM"),
+    ("Aprendizaje No Supervisado", "t-SNE"),
+    ("Aprendizaje No Supervisado", "UMAP"),
+    ("Ensemble Learning", "Random Forest"),
+    ("Ensemble Learning", "AdaBoost"),
+    ("Ensemble Learning", "Gradient Boosting"),
+    ("Ensemble Learning", "XGBoost"),
+    ("Ensemble Learning", "LightGBM"),
+    ("Ensemble Learning", "CatBoost"),
+
+    # Deep Learning
+    ("Deep Learning", "Transfer Learning"),
+    ("Deep Learning", "Attention"),
+    ("Attention", "Self-Attention"),
+    ("Transformers", "Attention"),
+    ("Transformers", "Self-Attention"),
+    ("CNN", "ResNet"),
+    ("Segmentación", "U-Net"),
+    ("Deep Learning", "GNN"),
+    ("Autoencoders", "VAE"),
+    ("Fine-Tuning", "LoRA"),
+    ("Fine-Tuning", "PEFT"),
+    ("Transfer Learning", "ResNet"),
+
+    # NLP / LLM / GenAI
+    ("LLMs", "Prompt Engineering"),
+    ("LLMs", "Zero-Shot"),
+    ("LLMs", "Few-Shot"),
+    ("LLMs", "In-Context Learning"),
+    ("LLMs", "Instruction Tuning"),
+    ("LLMs", "RLHF"),
+    ("LLMs", "Agentes IA"),
+    ("LLMs", "Tool Calling"),
+    ("LLMs", "Hallucinations"),
+    ("LLMs", "Guardrails"),
+    ("LLMs", "Evaluación LLM"),
+    ("Prompt Engineering", "Zero-Shot"),
+    ("Prompt Engineering", "Few-Shot"),
+    ("Prompt Engineering", "In-Context Learning"),
+    ("RAG", "Vector DB"),
+    ("RAG", "Chunking"),
+    ("RAG", "Re-ranking"),
+    ("RAG", "Embeddings"),
+    ("Agentes IA", "Tool Calling"),
+    ("Agentes IA", "Memoria"),
+
+    # Visión / multimodal
+    ("Visión Artificial", "OCR"),
+    ("Visión Artificial", "Seguimiento de Objetos"),
+    ("Visión Artificial", "Pose Estimation"),
+    ("Visión Artificial", "Multimodal"),
+    ("Detección de Objetos", "Seguimiento de Objetos"),
+    ("Detección de Objetos", "Pose Estimation"),
+    ("NLP", "Multimodal"),
+
+    # MLOps
+    ("MLOps", "Feature Engineering"),
+    ("MLOps", "Feature Store"),
+    ("MLOps", "Experiment Tracking"),
+    ("MLOps", "Model Registry"),
+    ("MLOps", "CI/CD"),
+    ("MLOps", "A/B Testing"),
+    ("MLOps", "Inferencia en Tiempo Real"),
+    ("MLOps", "Inferencia Batch"),
+    ("MLOps", "Canary Deployment"),
+    ("MLOps", "Observabilidad"),
+    ("MLflow", "Experiment Tracking"),
+    ("MLflow", "Model Registry"),
+    ("Despliegue", "Inferencia en Tiempo Real"),
+    ("Despliegue", "Inferencia Batch"),
+
+    # Data Engineering
+    ("Data Engineering", "Data Warehouse"),
+    ("Data Engineering", "ELT"),
+    ("Data Engineering", "Streaming"),
+    ("Data Engineering", "Kafka"),
+    ("Data Engineering", "Airflow"),
+    ("Data Engineering", "Data Governance"),
+    ("Data Engineering", "Calidad de Datos"),
+    ("Pipelines", "Airflow"),
+    ("Streaming", "Kafka"),
+    ("Data Lake", "Data Warehouse"),
+
+    # Cloud
+    ("Inteligencia Artificial", "Cloud Computing"),
+    ("Cloud Computing", "AWS"),
+    ("Cloud Computing", "Azure"),
+    ("Cloud Computing", "GCP"),
+    ("Cloud Computing", "Huawei Cloud"),
+    ("Cloud Computing", "IaaS"),
+    ("Cloud Computing", "PaaS"),
+    ("Cloud Computing", "SaaS"),
+    ("Cloud Computing", "Serverless"),
+    ("Cloud Computing", "Kubernetes"),
+    ("Cloud Computing", "Terraform"),
+    ("Cloud Computing", "IAM"),
+    ("Cloud Computing", "Object Storage"),
+    ("Cloud Computing", "Cloud Security"),
+    ("MLOps", "Kubernetes"),
+    ("MLOps", "Terraform"),
+    ("MLOps", "Cloud Computing"),
+    ("Data Engineering", "Cloud Computing"),
+
+    # Desarrollo de software
+    ("Inteligencia Artificial", "Desarrollo de Software"),
+    ("Desarrollo de Software", "Backend"),
+    ("Desarrollo de Software", "Frontend"),
+    ("Desarrollo de Software", "APIs"),
+    ("Desarrollo de Software", "Microservicios"),
+    ("Desarrollo de Software", "Testing"),
+    ("Desarrollo de Software", "Git"),
+    ("Desarrollo de Software", "Arquitectura de Software"),
+    ("Backend", "FastAPI"),
+    ("APIs", "FastAPI"),
+    ("Microservicios", "Docker"),
+    ("Microservicios", "Kubernetes"),
+    ("Testing", "CI/CD"),
+
+    # Responsible AI
+    ("Responsible AI", "Robustez"),
+    ("Responsible AI", "Seguridad IA"),
+    ("Responsible AI", "Gobernanza de IA"),
+    ("Seguridad IA", "Guardrails"),
+    ("Gobernanza de IA", "Evaluación LLM"),
+
+    # Quantum
+    ("Inteligencia Artificial", "Computación Cuántica"),
+    ("Computación Cuántica", "Qubits"),
+    ("Computación Cuántica", "Superposición"),
+    ("Computación Cuántica", "Entrelazamiento"),
+    ("Computación Cuántica", "Puertas Cuánticas"),
+    ("Computación Cuántica", "Circuitos Cuánticos"),
+    ("Computación Cuántica", "Medición Cuántica"),
+    ("Computación Cuántica", "Algoritmo de Grover"),
+    ("Computación Cuántica", "Algoritmo de Shor"),
+    ("Computación Cuántica", "QAOA"),
+    ("Computación Cuántica", "VQE"),
+    ("Computación Cuántica", "Qiskit"),
+    ("Computación Cuántica", "Quantum Machine Learning"),
+    ("Qubits", "Superposición"),
+    ("Qubits", "Entrelazamiento"),
+    ("Puertas Cuánticas", "Circuitos Cuánticos"),
+    ("Circuitos Cuánticos", "Medición Cuántica"),
+    ("Qiskit", "Algoritmo de Grover"),
+    ("Qiskit", "Algoritmo de Shor"),
+    ("Qiskit", "QAOA"),
+    ("Qiskit", "VQE"),
+    ("Quantum Machine Learning", "Machine Learning"),
+    ("Quantum Machine Learning", "Computación Cuántica"),
+
+
 ]
 
 # -----------------------------
