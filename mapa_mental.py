@@ -1035,11 +1035,11 @@ st.markdown("""
 # =========================================================
 # Lista de recursos
 # =========================================================
-st.subheader("Enlaces para profundizar")
-for nombre in sorted(nodes.keys()):
-    url = nodes[nombre].get("url", "")
-    if url:
-        st.markdown(f"- [{nombre}]({url})")
+#st.subheader("Enlaces para profundizar")
+#for nombre in sorted(nodes.keys()):
+#    url = nodes[nombre].get("url", "")
+#    if url:
+#        st.markdown(f"- [{nombre}]({url})")
 
 # =========================================================
 # Autoría
