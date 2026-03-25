@@ -1291,5 +1291,14 @@ st.markdown("""
 - **Visión Artificial**: analiza imágenes y video.  
 - **MLOps**: lleva modelos a producción y los mantiene sanos.  
 - **Data Engineering**: prepara y mueve los datos que alimentan los modelos.  
-- **Responsible AI**: evita que la IA haga tonteras elegantes pero peligrosas.
+- **Responsible AI**: evita que la IA haga cosas peligrosas.
 """)
+
+# -----------------------------
+# Autoría
+# -----------------------------
+st.markdown("---")
+st.caption(
+    "Construido por [Alexis Torres](https://www.linkedin.com/in/alexis-torres87) · "
+    "[GitHub](https://github.com/AlexisTorrresA)"
+)
