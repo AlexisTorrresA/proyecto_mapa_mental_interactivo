@@ -1,7 +1,9 @@
 import os
 import tempfile
 
+import altair as alt
 import networkx as nx
+import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 from pyvis.network import Network
@@ -31,6 +33,13 @@ central_gravity = st.sidebar.slider("Gravedad central", 0.0, 1.0, 0.2, 0.05)
 physics_enabled = st.sidebar.checkbox("Activar física", True)
 show_edges = st.sidebar.checkbox("Mostrar relaciones", True)
 
+# Nuevas opciones de tiempo
+st.sidebar.markdown("---")
+st.sidebar.subheader("Vista temporal")
+show_year_in_label = st.sidebar.checkbox("Mostrar años en nodos", False)
+show_timeline = st.sidebar.checkbox("Mostrar línea de tiempo", True)
+sort_by_epoch = st.sidebar.checkbox("Ordenar conceptos por época", True)
+
 # =========================================================
 # Definición de nodos
 # =========================================================
@@ -41,41 +50,49 @@ nodes = {
     "Inteligencia Artificial": {
         "color": "#f4d35e",
         "size": 38,
+        "year": 1956,
         "title": "Campo general que busca crear sistemas capaces de realizar tareas que normalmente requieren inteligencia humana.",
     },
     "Machine Learning": {
         "color": "#4ea8de",
         "size": 28,
+        "year": 1959,
         "title": "Subárea de la IA donde los modelos aprenden patrones a partir de datos sin programar cada regla manualmente.",
     },
     "Deep Learning": {
         "color": "#ff6b6b",
         "size": 28,
+        "year": 2006,
         "title": "Subárea del machine learning basada en redes neuronales profundas para aprender representaciones complejas.",
     },
     "NLP": {
         "color": "#72efdd",
         "size": 24,
+        "year": 1950,
         "title": "Procesamiento del lenguaje natural: permite a las máquinas entender, clasificar, generar y analizar texto o voz.",
     },
     "Visión Artificial": {
         "color": "#80ed99",
         "size": 24,
+        "year": 1966,
         "title": "Área que permite a las máquinas interpretar imágenes, videos y contenido visual.",
     },
     "MLOps": {
         "color": "#c77dff",
         "size": 24,
+        "year": 2015,
         "title": "Conjunto de prácticas para desplegar, monitorear y mantener modelos de ML en producción.",
     },
     "Data Engineering": {
         "color": "#a8dadc",
         "size": 24,
+        "year": 2010,
         "title": "Disciplina enfocada en construir pipelines, almacenamiento y procesamiento de datos confiables y escalables.",
     },
     "Responsible AI": {
         "color": "#f28482",
         "size": 24,
+        "year": 2016,
         "title": "Enfoque para desarrollar IA ética, explicable, justa, segura y alineada con normativas.",
     },
 
@@ -85,66 +102,79 @@ nodes = {
     "Aprendizaje Supervisado": {
         "color": "#4ea8de",
         "size": 18,
+        "year": 1950,
         "title": "Entrena modelos usando datos etiquetados para predecir una salida conocida.",
     },
     "Aprendizaje No Supervisado": {
         "color": "#4ea8de",
         "size": 18,
+        "year": 1958,
         "title": "Busca patrones, grupos o estructuras ocultas en datos sin etiquetas.",
     },
     "Aprendizaje por Refuerzo": {
         "color": "#4ea8de",
         "size": 18,
+        "year": 1989,
         "title": "Un agente aprende a tomar decisiones maximizando recompensas en un entorno.",
     },
     "Regresión Lineal": {
         "color": "#5dade2",
         "size": 14,
+        "year": 1805,
         "title": "Algoritmo simple para predecir valores continuos mediante una relación lineal.",
     },
     "Regresión Logística": {
         "color": "#5dade2",
         "size": 14,
+        "year": 1958,
         "title": "Modelo clásico para clasificación binaria usando probabilidades.",
     },
     "Árboles de Decisión": {
         "color": "#5dade2",
         "size": 14,
+        "year": 1963,
         "title": "Modelo interpretable que divide los datos según reglas jerárquicas.",
     },
     "Random Forest": {
         "color": "#5dade2",
         "size": 14,
+        "year": 2001,
         "title": "Conjunto de árboles de decisión que mejora robustez y generalización.",
     },
     "XGBoost": {
         "color": "#5dade2",
         "size": 14,
+        "year": 2014,
         "title": "Algoritmo de boosting muy potente para datos tabulares y competiciones.",
     },
     "SVM": {
         "color": "#5dade2",
         "size": 14,
+        "year": 1995,
         "title": "Máquinas de soporte vectorial: separan clases maximizando el margen entre ellas.",
     },
     "KNN": {
         "color": "#5dade2",
         "size": 14,
+        "year": 1951,
         "title": "Clasifica o predice usando los vecinos más cercanos en el espacio de características.",
     },
     "K-Means": {
         "color": "#5dade2",
         "size": 14,
+        "year": 1957,
         "title": "Algoritmo de clustering que agrupa datos según centroides.",
     },
     "DBSCAN": {
         "color": "#5dade2",
         "size": 14,
+        "year": 1996,
         "title": "Algoritmo de clustering basado en densidad, útil para detectar ruido y formas arbitrarias.",
     },
     "PCA": {
         "color": "#5dade2",
         "size": 14,
+        "year": 1901,
         "title": "Técnica de reducción de dimensionalidad que proyecta los datos en componentes principales.",
     },
 
@@ -154,36 +184,43 @@ nodes = {
     "Redes Neuronales": {
         "color": "#ff6b6b",
         "size": 20,
+        "year": 1943,
         "title": "Modelos inspirados en neuronas artificiales, base de gran parte del deep learning.",
     },
     "CNN": {
         "color": "#ff6b6b",
         "size": 14,
+        "year": 1998,
         "title": "Redes convolucionales, muy usadas en imágenes y visión artificial.",
     },
     "RNN": {
         "color": "#ff6b6b",
         "size": 14,
+        "year": 1986,
         "title": "Redes recurrentes, diseñadas para secuencias temporales o texto.",
     },
     "LSTM": {
         "color": "#ff6b6b",
         "size": 14,
+        "year": 1997,
         "title": "Variante de RNN que maneja mejor dependencias largas en secuencias.",
     },
     "Transformers": {
         "color": "#ff6b6b",
         "size": 16,
+        "year": 2017,
         "title": "Arquitectura moderna basada en atención, clave en NLP y modelos generativos.",
     },
     "Embeddings": {
         "color": "#ff6b6b",
         "size": 14,
+        "year": 2003,
         "title": "Representaciones vectoriales densas de palabras, imágenes u otros objetos.",
     },
     "Fine-tuning": {
         "color": "#ff6b6b",
         "size": 14,
+        "year": 2018,
         "title": "Ajuste de un modelo preentrenado a una tarea o dominio específico.",
     },
 
@@ -193,51 +230,61 @@ nodes = {
     "Tokenización": {
         "color": "#72efdd",
         "size": 14,
+        "year": 1950,
         "title": "Proceso de dividir texto en unidades como palabras, subpalabras o tokens.",
     },
     "NER": {
         "color": "#72efdd",
         "size": 14,
+        "year": 1995,
         "title": "Reconocimiento de entidades nombradas como personas, lugares, organizaciones o fechas.",
     },
     "Clasificación de Texto": {
         "color": "#72efdd",
         "size": 14,
+        "year": 1960,
         "title": "Asignación de categorías o etiquetas a documentos o frases.",
     },
     "Análisis de Sentimiento": {
         "color": "#72efdd",
         "size": 14,
+        "year": 2001,
         "title": "Técnica para identificar polaridad u opiniones en texto.",
     },
     "LLMs": {
         "color": "#72efdd",
         "size": 18,
+        "year": 2018,
         "title": "Modelos de lenguaje de gran escala entrenados sobre enormes volúmenes de texto.",
     },
     "Prompt Engineering": {
         "color": "#72efdd",
         "size": 14,
+        "year": 2022,
         "title": "Diseño de instrucciones efectivas para guiar la salida de modelos generativos.",
     },
     "RAG": {
         "color": "#72efdd",
         "size": 14,
+        "year": 2020,
         "title": "Retrieval-Augmented Generation: combina recuperación de información con generación de texto.",
     },
     "Vector DB": {
         "color": "#72efdd",
         "size": 14,
+        "year": 2019,
         "title": "Base de datos especializada en búsqueda semántica sobre embeddings.",
     },
     "Agentes": {
         "color": "#72efdd",
         "size": 14,
+        "year": 2023,
         "title": "Sistemas que usan modelos para razonar, planificar y ejecutar acciones con herramientas.",
     },
     "Evaluación LLM": {
         "color": "#72efdd",
         "size": 14,
+        "year": 2023,
         "title": "Prácticas para medir calidad, seguridad, factualidad y utilidad de modelos de lenguaje.",
     },
 
@@ -247,26 +294,31 @@ nodes = {
     "Clasificación de Imágenes": {
         "color": "#80ed99",
         "size": 14,
+        "year": 1990,
         "title": "Predice la categoría principal de una imagen.",
     },
     "Detección de Objetos": {
         "color": "#80ed99",
         "size": 14,
+        "year": 2001,
         "title": "Detecta y localiza objetos dentro de una imagen usando cajas delimitadoras.",
     },
     "Segmentación": {
         "color": "#80ed99",
         "size": 14,
+        "year": 1979,
         "title": "Divide una imagen en regiones o píxeles con significado específico.",
     },
     "YOLO": {
         "color": "#80ed99",
         "size": 14,
+        "year": 2016,
         "title": "Familia de modelos rápidos para detección de objetos en tiempo real.",
     },
     "OpenCV": {
         "color": "#80ed99",
         "size": 14,
+        "year": 2000,
         "title": "Librería muy usada para procesamiento de imágenes y visión por computador.",
     },
 
@@ -276,36 +328,43 @@ nodes = {
     "CI/CD": {
         "color": "#c77dff",
         "size": 14,
+        "year": 2000,
         "title": "Integración y despliegue continuo para automatizar pruebas y entregas.",
     },
     "Docker": {
         "color": "#c77dff",
         "size": 14,
+        "year": 2013,
         "title": "Tecnología para empaquetar aplicaciones y modelos en contenedores reproducibles.",
     },
     "Kubernetes": {
         "color": "#c77dff",
         "size": 14,
+        "year": 2014,
         "title": "Orquestador de contenedores para despliegue, escalado y operación de servicios.",
     },
     "MLflow": {
         "color": "#c77dff",
         "size": 14,
+        "year": 2018,
         "title": "Herramienta para seguimiento de experimentos, modelos y ciclos de vida de ML.",
     },
     "Serving": {
         "color": "#c77dff",
         "size": 14,
+        "year": 2015,
         "title": "Publicación de modelos para inferencia en tiempo real o batch.",
     },
     "Monitoreo de Modelos": {
         "color": "#c77dff",
         "size": 14,
+        "year": 2019,
         "title": "Seguimiento del desempeño, deriva y salud de modelos en producción.",
     },
     "Drift": {
         "color": "#c77dff",
         "size": 14,
+        "year": 2010,
         "title": "Cambio en datos o comportamiento del entorno que afecta la calidad del modelo.",
     },
 
@@ -315,41 +374,49 @@ nodes = {
     "ETL": {
         "color": "#a8dadc",
         "size": 14,
+        "year": 1970,
         "title": "Proceso de extracción, transformación y carga de datos.",
     },
     "Pipelines": {
         "color": "#a8dadc",
         "size": 14,
+        "year": 2010,
         "title": "Flujos automatizados para mover, transformar y procesar datos.",
     },
     "Data Lake": {
         "color": "#a8dadc",
         "size": 14,
+        "year": 2011,
         "title": "Repositorio escalable para almacenar datos estructurados y no estructurados.",
     },
     "Data Warehouse": {
         "color": "#a8dadc",
         "size": 14,
+        "year": 1988,
         "title": "Base orientada a analítica y consultas estructuradas para BI.",
     },
     "Streaming": {
         "color": "#a8dadc",
         "size": 14,
+        "year": 1992,
         "title": "Procesamiento continuo de eventos o datos en tiempo real.",
     },
     "Airflow": {
         "color": "#a8dadc",
         "size": 14,
+        "year": 2015,
         "title": "Plataforma popular para orquestación de workflows y pipelines.",
     },
     "Kafka": {
         "color": "#a8dadc",
         "size": 14,
+        "year": 2011,
         "title": "Sistema distribuido para mensajería y streaming de eventos.",
     },
     "Calidad de Datos": {
         "color": "#a8dadc",
         "size": 14,
+        "year": 2000,
         "title": "Prácticas para asegurar consistencia, completitud, precisión y confiabilidad de datos.",
     },
 
@@ -359,66 +426,79 @@ nodes = {
     "Cloud Computing": {
         "color": "#ffd166",
         "size": 24,
+        "year": 2006,
         "title": "Uso de infraestructura, plataformas y servicios remotos para desarrollar y operar sistemas.",
     },
     "AWS": {
         "color": "#ffd166",
         "size": 14,
+        "year": 2006,
         "title": "Proveedor líder de servicios cloud.",
     },
     "Azure": {
         "color": "#ffd166",
         "size": 14,
+        "year": 2010,
         "title": "Plataforma cloud de Microsoft.",
     },
     "GCP": {
         "color": "#ffd166",
         "size": 14,
+        "year": 2008,
         "title": "Google Cloud Platform, enfocada en datos, ML y servicios escalables.",
     },
     "Huawei Cloud": {
         "color": "#ffd166",
         "size": 14,
+        "year": 2017,
         "title": "Plataforma cloud de Huawei con servicios de infraestructura, datos y ML.",
     },
     "IaaS": {
         "color": "#ffd166",
         "size": 14,
+        "year": 2006,
         "title": "Infraestructura como servicio.",
     },
     "PaaS": {
         "color": "#ffd166",
         "size": 14,
+        "year": 2007,
         "title": "Plataforma como servicio.",
     },
     "SaaS": {
         "color": "#ffd166",
         "size": 14,
+        "year": 1999,
         "title": "Software como servicio.",
     },
     "Serverless": {
         "color": "#ffd166",
         "size": 14,
+        "year": 2014,
         "title": "Modelo donde el proveedor administra la infraestructura y se ejecuta bajo demanda.",
     },
     "Terraform": {
         "color": "#ffd166",
         "size": 14,
+        "year": 2014,
         "title": "Infraestructura como código para aprovisionar recursos cloud.",
     },
     "IAM": {
         "color": "#ffd166",
         "size": 14,
+        "year": 1999,
         "title": "Gestión de identidades y accesos.",
     },
     "Object Storage": {
         "color": "#ffd166",
         "size": 14,
+        "year": 2006,
         "title": "Servicio de almacenamiento escalable basado en objetos.",
     },
     "Cloud Security": {
         "color": "#ffd166",
         "size": 14,
+        "year": 2010,
         "title": "Prácticas y controles para proteger sistemas y datos en la nube.",
     },
 
@@ -428,46 +508,55 @@ nodes = {
     "Desarrollo de Software": {
         "color": "#06d6a0",
         "size": 24,
+        "year": 1968,
         "title": "Disciplina para diseñar, construir, probar y mantener aplicaciones.",
     },
     "Backend": {
         "color": "#06d6a0",
         "size": 14,
+        "year": 1990,
         "title": "Lógica de servidor, APIs, bases de datos y reglas de negocio.",
     },
     "Frontend": {
         "color": "#06d6a0",
         "size": 14,
+        "year": 1990,
         "title": "Interfaz de usuario y experiencia visual de la aplicación.",
     },
     "APIs": {
         "color": "#06d6a0",
         "size": 14,
+        "year": 2000,
         "title": "Interfaces que permiten la comunicación entre sistemas.",
     },
     "Microservicios": {
         "color": "#06d6a0",
         "size": 14,
+        "year": 2011,
         "title": "Arquitectura de servicios pequeños, independientes y desplegables por separado.",
     },
     "Testing": {
         "color": "#06d6a0",
         "size": 14,
+        "year": 1979,
         "title": "Pruebas para validar el comportamiento y calidad del software.",
     },
     "Git": {
         "color": "#06d6a0",
         "size": 14,
+        "year": 2005,
         "title": "Sistema de control de versiones para colaboración y trazabilidad del código.",
     },
     "Arquitectura de Software": {
         "color": "#06d6a0",
         "size": 14,
+        "year": 1969,
         "title": "Diseño de componentes, integraciones, escalabilidad y mantenibilidad del sistema.",
     },
     "FastAPI": {
         "color": "#06d6a0",
         "size": 14,
+        "year": 2018,
         "title": "Framework moderno de Python para construir APIs rápidas.",
     },
 
@@ -477,21 +566,25 @@ nodes = {
     "Robustez": {
         "color": "#f28482",
         "size": 14,
+        "year": 1990,
         "title": "Capacidad del sistema para resistir ruido, ataques o cambios inesperados.",
     },
     "Seguridad IA": {
         "color": "#f28482",
         "size": 14,
+        "year": 2023,
         "title": "Protección contra ataques, fugas, abuso y comportamientos inseguros en sistemas de IA.",
     },
     "Gobernanza de IA": {
         "color": "#f28482",
         "size": 14,
+        "year": 2018,
         "title": "Políticas, controles y trazabilidad para operar IA de manera responsable.",
     },
     "Guardrails": {
         "color": "#f28482",
         "size": 14,
+        "year": 2023,
         "title": "Restricciones y mecanismos de control para reducir respuestas dañinas o fuera de política.",
     },
 
@@ -501,66 +594,79 @@ nodes = {
     "Computación Cuántica": {
         "color": "#9b5de5",
         "size": 24,
+        "year": 1980,
         "title": "Paradigma de cómputo basado en qubits, superposición y entrelazamiento.",
     },
     "Qubits": {
         "color": "#9b5de5",
         "size": 16,
+        "year": 1995,
         "title": "Unidad básica de información cuántica.",
     },
     "Superposición": {
         "color": "#9b5de5",
         "size": 14,
+        "year": 1926,
         "title": "Propiedad que permite a un estado cuántico combinar múltiples posibilidades.",
     },
     "Entrelazamiento": {
         "color": "#9b5de5",
         "size": 14,
+        "year": 1935,
         "title": "Correlación cuántica fuerte entre qubits.",
     },
     "Puertas Cuánticas": {
         "color": "#9b5de5",
         "size": 14,
+        "year": 1995,
         "title": "Operaciones que transforman estados cuánticos en un circuito.",
     },
     "Circuitos Cuánticos": {
         "color": "#9b5de5",
         "size": 14,
+        "year": 1989,
         "title": "Secuencia de puertas cuánticas aplicada a qubits.",
     },
     "Medición Cuántica": {
         "color": "#9b5de5",
         "size": 14,
+        "year": 1926,
         "title": "Proceso de observación que colapsa el estado cuántico a un resultado clásico.",
     },
     "Algoritmo de Grover": {
         "color": "#9b5de5",
         "size": 14,
+        "year": 1996,
         "title": "Algoritmo cuántico para búsqueda con aceleración cuadrática idealizada.",
     },
     "Algoritmo de Shor": {
         "color": "#9b5de5",
         "size": 14,
+        "year": 1994,
         "title": "Algoritmo cuántico conocido por factorizar enteros en ciertos contextos.",
     },
     "QAOA": {
         "color": "#9b5de5",
         "size": 14,
+        "year": 2014,
         "title": "Quantum Approximate Optimization Algorithm, método híbrido para optimización.",
     },
     "VQE": {
         "color": "#9b5de5",
         "size": 14,
+        "year": 2014,
         "title": "Variational Quantum Eigensolver, algoritmo híbrido usado en simulación cuántica.",
     },
     "Qiskit": {
         "color": "#9b5de5",
         "size": 14,
+        "year": 2017,
         "title": "SDK popular para programación y experimentación en computación cuántica.",
     },
     "Quantum Machine Learning": {
         "color": "#9b5de5",
         "size": 16,
+        "year": 2017,
         "title": "Intersección entre computación cuántica y aprendizaje automático.",
     },
 }
@@ -686,7 +792,6 @@ for node_name in nodes:
 # Relaciones
 # =========================================================
 edges = [
-    # IA general
     ("Inteligencia Artificial", "Machine Learning"),
     ("Inteligencia Artificial", "Deep Learning"),
     ("Inteligencia Artificial", "NLP"),
@@ -695,7 +800,6 @@ edges = [
     ("Inteligencia Artificial", "Data Engineering"),
     ("Inteligencia Artificial", "Responsible AI"),
 
-    # ML clásico
     ("Machine Learning", "Aprendizaje Supervisado"),
     ("Machine Learning", "Aprendizaje No Supervisado"),
     ("Machine Learning", "Aprendizaje por Refuerzo"),
@@ -710,7 +814,6 @@ edges = [
     ("Aprendizaje No Supervisado", "DBSCAN"),
     ("Aprendizaje No Supervisado", "PCA"),
 
-    # Deep Learning
     ("Deep Learning", "Redes Neuronales"),
     ("Redes Neuronales", "CNN"),
     ("Redes Neuronales", "RNN"),
@@ -720,7 +823,6 @@ edges = [
     ("Deep Learning", "Fine-tuning"),
     ("Transformers", "LLMs"),
 
-    # NLP / LLMs
     ("NLP", "Tokenización"),
     ("NLP", "NER"),
     ("NLP", "Clasificación de Texto"),
@@ -732,14 +834,12 @@ edges = [
     ("RAG", "Vector DB"),
     ("LLMs", "Evaluación LLM"),
 
-    # Visión
     ("Visión Artificial", "Clasificación de Imágenes"),
     ("Visión Artificial", "Detección de Objetos"),
     ("Visión Artificial", "Segmentación"),
     ("Detección de Objetos", "YOLO"),
     ("Visión Artificial", "OpenCV"),
 
-    # MLOps
     ("MLOps", "CI/CD"),
     ("MLOps", "Docker"),
     ("MLOps", "Kubernetes"),
@@ -748,7 +848,6 @@ edges = [
     ("MLOps", "Monitoreo de Modelos"),
     ("Monitoreo de Modelos", "Drift"),
 
-    # Data Engineering
     ("Data Engineering", "ETL"),
     ("Data Engineering", "Pipelines"),
     ("Data Engineering", "Data Lake"),
@@ -759,7 +858,6 @@ edges = [
     ("Streaming", "Kafka"),
     ("Data Lake", "Data Warehouse"),
 
-    # Cloud
     ("Inteligencia Artificial", "Cloud Computing"),
     ("Cloud Computing", "AWS"),
     ("Cloud Computing", "Azure"),
@@ -777,7 +875,6 @@ edges = [
     ("MLOps", "Cloud Computing"),
     ("Data Engineering", "Cloud Computing"),
 
-    # Desarrollo de software
     ("Inteligencia Artificial", "Desarrollo de Software"),
     ("Desarrollo de Software", "Backend"),
     ("Desarrollo de Software", "Frontend"),
@@ -792,14 +889,12 @@ edges = [
     ("Microservicios", "Kubernetes"),
     ("Testing", "CI/CD"),
 
-    # Responsible AI
     ("Responsible AI", "Robustez"),
     ("Responsible AI", "Seguridad IA"),
     ("Responsible AI", "Gobernanza de IA"),
     ("Seguridad IA", "Guardrails"),
     ("Gobernanza de IA", "Evaluación LLM"),
 
-    # Quantum
     ("Inteligencia Artificial", "Computación Cuántica"),
     ("Computación Cuántica", "Qubits"),
     ("Computación Cuántica", "Superposición"),
@@ -838,7 +933,9 @@ selected_topic = st.sidebar.selectbox(
 
 selected_url = nodes[selected_topic].get("url", "")
 selected_desc = nodes[selected_topic].get("title", "")
+selected_year = nodes[selected_topic].get("year", "Sin año")
 
+st.sidebar.markdown(f"**Año:** {selected_year}")
 st.sidebar.markdown(f"**Descripción:** {selected_desc}")
 if selected_url:
     st.sidebar.markdown(f"[Abrir recurso de {selected_topic}]({selected_url})")
@@ -853,6 +950,10 @@ G = nx.Graph()
 for node_name, attrs in nodes.items():
     descripcion = attrs["title"]
     url = attrs.get("url", "")
+    year = attrs.get("year", "")
+
+    if year:
+        descripcion = f"<b>Año:</b> {year}<br><br>{descripcion}"
 
     if url:
         descripcion += f"<br><br><b>Más información:</b><br><a href='{url}' target='_blank'>{url}</a>"
@@ -863,6 +964,7 @@ for node_name, attrs in nodes.items():
         size=attrs["size"],
         title=descripcion,
         url=url,
+        year=year,
     )
 
 if show_edges:
@@ -883,7 +985,14 @@ net = Network(
 net.from_nx(G)
 
 for node in net.nodes:
-    node["label"] = node["id"]
+    base_label = node["id"]
+    year = G.nodes[node["id"]].get("year", "")
+
+    if show_year_in_label and year:
+        node["label"] = f"{base_label} ({year})"
+    else:
+        node["label"] = base_label
+
     node["font"] = {"size": 18, "color": "white"}
     node["title"] = G.nodes[node["id"]].get("title", "")
     node["url"] = G.nodes[node["id"]].get("url", "")
@@ -1008,11 +1117,62 @@ with open(tmp_file_path, "r", encoding="utf-8") as f:
 
 components.html(html_content, height=840, scrolling=True)
 
-# Limpiar archivo temporal
 try:
     os.unlink(tmp_file_path)
 except Exception:
     pass
+
+# =========================================================
+# Timeline paralela
+# =========================================================
+if show_timeline:
+    st.markdown("---")
+    st.subheader("Evolución histórica de tecnologías")
+
+    timeline_rows = []
+    for nombre, attrs in nodes.items():
+        year = attrs.get("year", None)
+        if year is not None:
+            timeline_rows.append({
+                "Concepto": nombre,
+                "Año": year,
+                "Descripción": attrs.get("title", ""),
+                "Recurso": attrs.get("url", ""),
+            })
+
+    if timeline_rows:
+        df_timeline = pd.DataFrame(timeline_rows)
+
+        if sort_by_epoch:
+            df_timeline = df_timeline.sort_values(["Año", "Concepto"], ascending=[True, True])
+        else:
+            df_timeline = df_timeline.sort_values(["Concepto"], ascending=[True])
+
+        st.markdown("### Tabla interactiva")
+        st.dataframe(
+            df_timeline,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Concepto": st.column_config.TextColumn("Concepto"),
+                "Año": st.column_config.NumberColumn("Año", format="%d"),
+                "Descripción": st.column_config.TextColumn("Descripción", width="large"),
+                "Recurso": st.column_config.LinkColumn("Recurso"),
+            }
+        )
+
+        st.markdown("### Línea de tiempo visual")
+        chart = alt.Chart(df_timeline).mark_circle(size=130).encode(
+            x=alt.X("Año:Q", title="Año"),
+            y=alt.Y(
+                "Concepto:N",
+                sort=alt.SortField(field="Año", order="ascending") if sort_by_epoch else None,
+                title="Concepto"
+            ),
+            tooltip=["Concepto", "Año", "Descripción", "Recurso"]
+        ).interactive()
+
+        st.altair_chart(chart, use_container_width=True)
 
 # =========================================================
 # Resumen
@@ -1031,15 +1191,6 @@ st.markdown("""
 - **Desarrollo de Software**: da la base arquitectónica y operativa para construir productos reales.  
 - **Computación Cuántica**: explora nuevos paradigmas de cómputo y su cruce con ML.
 """)
-
-# =========================================================
-# Lista de recursos
-# =========================================================
-#st.subheader("Enlaces para profundizar")
-#for nombre in sorted(nodes.keys()):
-#    url = nodes[nombre].get("url", "")
-#    if url:
-#        st.markdown(f"- [{nombre}]({url})")
 
 # =========================================================
 # Autoría
