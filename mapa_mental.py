@@ -1,5 +1,7 @@
 import os
+import json
 import tempfile
+from collections import deque
 
 import altair as alt
 import networkx as nx
@@ -9,14 +11,46 @@ import streamlit.components.v1 as components
 from pyvis.network import Network
 
 st.set_page_config(page_title="Mapa mental IA interactivo", layout="wide")
-st.title("Mapa mental interactivo de IA, ML, Cloud, Software y Quantum")
-st.write("Pasa el mouse sobre cada nodo para ver una descripción. También puedes abrir un recurso para profundizar.")
+st.title("Mapa mental interactivo de IA, ML, Cloud, Software, Python, Robótica y Quantum")
+st.write(
+    "Haz click en un nodo para enfocar su submapa. "
+    "Haz doble click para abrir su recurso externo."
+)
 
 # =========================================================
-# Links de autor
+# Configuración general
 # =========================================================
 LINKEDIN_URL = "https://www.linkedin.com/in/alexis-torres87/"
 GITHUB_URL = "https://github.com/AlexisTorrresA"
+
+KIND_STYLES = {
+    "concepto":   {"shape": "dot",      "size_boost": 0},
+    "herramienta":{"shape": "box",      "size_boost": -2},
+    "aplicacion": {"shape": "diamond",  "size_boost": -1},
+    "sitio":      {"shape": "star",     "size_boost": -2},
+    "libreria":   {"shape": "triangle", "size_boost": -2},
+    "dataset":    {"shape": "hexagon",  "size_boost": -2},
+    "robotica":   {"shape": "square",   "size_boost": -1},
+    "funcion":    {"shape": "ellipse",  "size_boost": -4},
+}
+
+DOMAIN_COLORS = {
+    "IA": "#f4d35e",
+    "ML": "#4ea8de",
+    "Deep Learning": "#ff6b6b",
+    "NLP": "#72efdd",
+    "Visión": "#80ed99",
+    "MLOps": "#c77dff",
+    "Data Engineering": "#a8dadc",
+    "Cloud": "#ffd166",
+    "Software": "#06d6a0",
+    "Responsible AI": "#f28482",
+    "Quantum": "#9b5de5",
+    "Python": "#3776ab",
+    "Datos": "#8ecae6",
+    "Robótica": "#f72585",
+    "General": "#adb5bd",
+}
 
 # =========================================================
 # Sidebar
@@ -27,1175 +61,1367 @@ tipo_mapa = st.sidebar.selectbox(
     "Tipo de mapa", ["Libre", "Jerárquico LR", "Jerárquico UD"]
 )
 
-node_distance = st.sidebar.slider("Distancia entre nodos", 100, 400, 220, 10)
-spring_length = st.sidebar.slider("Longitud de resortes", 50, 300, 180, 10)
+node_distance = st.sidebar.slider("Distancia entre nodos", 100, 500, 220, 10)
+spring_length = st.sidebar.slider("Longitud de resortes", 50, 400, 180, 10)
 central_gravity = st.sidebar.slider("Gravedad central", 0.0, 1.0, 0.2, 0.05)
 physics_enabled = st.sidebar.checkbox("Activar física", True)
 show_edges = st.sidebar.checkbox("Mostrar relaciones", True)
 
-# Nuevas opciones de tiempo
 st.sidebar.markdown("---")
 st.sidebar.subheader("Vista temporal")
 show_year_in_label = st.sidebar.checkbox("Mostrar años en nodos", False)
 show_timeline = st.sidebar.checkbox("Mostrar línea de tiempo", True)
 sort_by_epoch = st.sidebar.checkbox("Ordenar conceptos por época", True)
 
+st.sidebar.markdown("---")
+st.sidebar.subheader("Exploración")
+show_python_functions = st.sidebar.checkbox("Mostrar funciones Python como nodos", False)
+max_function_nodes_per_lib = st.sidebar.slider("Máx. funciones por librería", 2, 12, 5, 1)
+depth = st.sidebar.slider("Profundidad del submapa", 0, 3, 1, 1)
+
 # =========================================================
-# Definición de nodos
+# Datos base
 # =========================================================
 nodes = {
-    # =============================
-    # IA general
-    # =============================
+    # -----------------------------
+    # Tronco principal
+    # -----------------------------
     "Inteligencia Artificial": {
-        "color": "#f4d35e",
+        "kind": "concepto",
+        "domain": "IA",
         "size": 38,
         "year": 1956,
         "title": "Campo general que busca crear sistemas capaces de realizar tareas que normalmente requieren inteligencia humana.",
+        "examples": ["Asistentes virtuales", "Diagnóstico asistido", "Automatización inteligente"],
+        "tools": ["Python", "PyTorch", "TensorFlow"],
+        "url": "https://es.wikipedia.org/wiki/Inteligencia_artificial",
+        "tags": ["IA", "sistemas inteligentes"],
     },
     "Machine Learning": {
-        "color": "#4ea8de",
-        "size": 28,
+        "kind": "concepto",
+        "domain": "ML",
+        "size": 30,
         "year": 1959,
         "title": "Subárea de la IA donde los modelos aprenden patrones a partir de datos sin programar cada regla manualmente.",
+        "examples": ["Predicción de demanda", "Scoring de riesgo", "Clasificación automática"],
+        "tools": ["scikit-learn", "XGBoost"],
+        "url": "https://es.wikipedia.org/wiki/Aprendizaje_autom%C3%A1tico",
+        "tags": ["ML", "modelos", "aprendizaje"],
     },
     "Deep Learning": {
-        "color": "#ff6b6b",
-        "size": 28,
+        "kind": "concepto",
+        "domain": "Deep Learning",
+        "size": 30,
         "year": 2006,
-        "title": "Subárea del machine learning basada en redes neuronales profundas para aprender representaciones complejas.",
+        "title": "Subárea del machine learning basada en redes neuronales profundas.",
+        "examples": ["Clasificación de imágenes", "LLMs", "Reconocimiento de voz"],
+        "tools": ["PyTorch", "TensorFlow"],
+        "url": "https://es.wikipedia.org/wiki/Aprendizaje_profundo",
+    },
+    "Generative AI": {
+        "kind": "concepto",
+        "domain": "IA",
+        "size": 28,
+        "year": 2020,
+        "title": "Modelos capaces de generar texto, imágenes, audio, código u otro contenido.",
+        "examples": ["Chatbots", "Generación de imágenes", "Copilots"],
+        "tools": ["Transformers", "Diffusers", "OpenAI API"],
+        "url": "https://en.wikipedia.org/wiki/Generative_artificial_intelligence",
     },
     "NLP": {
-        "color": "#72efdd",
+        "kind": "concepto",
+        "domain": "NLP",
         "size": 24,
         "year": 1950,
-        "title": "Procesamiento del lenguaje natural: permite a las máquinas entender, clasificar, generar y analizar texto o voz.",
+        "title": "Procesamiento del lenguaje natural para entender, analizar y generar texto o voz.",
+        "examples": ["Clasificación de texto", "NER", "Resumen automático"],
+        "tools": ["spaCy", "Transformers", "NLTK"],
+        "url": "https://es.wikipedia.org/wiki/Procesamiento_del_lenguaje_natural",
     },
     "Visión Artificial": {
-        "color": "#80ed99",
+        "kind": "concepto",
+        "domain": "Visión",
         "size": 24,
         "year": 1966,
         "title": "Área que permite a las máquinas interpretar imágenes, videos y contenido visual.",
+        "examples": ["Detección de objetos", "OCR", "Segmentación"],
+        "tools": ["OpenCV", "YOLO", "PyTorch"],
+        "url": "https://es.wikipedia.org/wiki/Visi%C3%B3n_artificial",
     },
-    "MLOps": {
-        "color": "#c77dff",
+    "Cloud Computing": {
+        "kind": "concepto",
+        "domain": "Cloud",
         "size": 24,
-        "year": 2015,
-        "title": "Conjunto de prácticas para desplegar, monitorear y mantener modelos de ML en producción.",
+        "year": 2006,
+        "title": "Uso de infraestructura, plataformas y servicios remotos para desarrollar y operar sistemas.",
+        "examples": ["Desplegar APIs", "Entrenar modelos en la nube", "Almacenamiento escalable"],
+        "tools": ["AWS", "Azure", "GCP", "Terraform", "Docker", "Kubernetes"],
+        "python_libraries": ["boto3", "azure-storage-blob", "google-cloud-storage"],
+        "url": "https://es.wikipedia.org/wiki/Computaci%C3%B3n_en_la_nube",
     },
     "Data Engineering": {
-        "color": "#a8dadc",
+        "kind": "concepto",
+        "domain": "Data Engineering",
         "size": 24,
         "year": 2010,
-        "title": "Disciplina enfocada en construir pipelines, almacenamiento y procesamiento de datos confiables y escalables.",
+        "title": "Disciplina enfocada en construir pipelines, almacenamiento y procesamiento confiable de datos.",
+        "examples": ["ETL", "Ingesta masiva", "Streaming"],
+        "tools": ["Airflow", "Kafka", "Spark"],
+        "url": "https://en.wikipedia.org/wiki/Data_engineering",
+    },
+    "MLOps": {
+        "kind": "concepto",
+        "domain": "MLOps",
+        "size": 24,
+        "year": 2015,
+        "title": "Prácticas para desplegar, monitorear y mantener modelos de ML en producción.",
+        "examples": ["Tracking de experimentos", "Model serving", "Monitoreo de drift"],
+        "tools": ["MLflow", "Docker", "Kubernetes", "FastAPI"],
+        "url": "https://en.wikipedia.org/wiki/MLOps",
+    },
+    "Python": {
+        "kind": "concepto",
+        "domain": "Python",
+        "size": 26,
+        "year": 1991,
+        "title": "Lenguaje clave para IA, automatización, backend y análisis de datos.",
+        "examples": ["Scripts", "APIs", "Modelado", "Visualización"],
+        "tools": ["Pandas", "NumPy", "FastAPI", "Streamlit"],
+        "url": "https://www.python.org/",
+    },
+    "Robótica": {
+        "kind": "robotica",
+        "domain": "Robótica",
+        "size": 26,
+        "year": 1961,
+        "title": "Disciplina que integra mecánica, electrónica, control, software e IA.",
+        "examples": ["Brazos robóticos", "Robots móviles", "Visión embarcada"],
+        "tools": ["ROS", "Raspberry Pi", "Servos", "OpenCV"],
+        "url": "https://en.wikipedia.org/wiki/Robotics",
+    },
+    "Computación Cuántica": {
+        "kind": "concepto",
+        "domain": "Quantum",
+        "size": 24,
+        "year": 1980,
+        "title": "Paradigma de cómputo basado en qubits, superposición y entrelazamiento.",
+        "examples": ["VQE", "QAOA", "Algoritmo de Shor"],
+        "tools": ["Qiskit"],
+        "url": "https://es.wikipedia.org/wiki/Computaci%C3%B3n_cu%C3%A1ntica",
     },
     "Responsible AI": {
-        "color": "#f28482",
+        "kind": "concepto",
+        "domain": "Responsible AI",
         "size": 24,
         "year": 2016,
-        "title": "Enfoque para desarrollar IA ética, explicable, justa, segura y alineada con normativas.",
+        "title": "Enfoque para desarrollar IA ética, explicable, segura y alineada con normativas.",
+        "examples": ["Mitigación de sesgo", "Evaluación de riesgos", "Trazabilidad"],
+        "tools": ["Guardrails", "Evals"],
+        "url": "https://www.ibm.com/think/topics/responsible-ai",
     },
 
-    # =============================
+    # -----------------------------
     # ML clásico
-    # =============================
+    # -----------------------------
     "Aprendizaje Supervisado": {
-        "color": "#4ea8de",
+        "kind": "concepto",
+        "domain": "ML",
         "size": 18,
         "year": 1950,
-        "title": "Entrena modelos usando datos etiquetados para predecir una salida conocida.",
+        "title": "Entrena modelos usando datos etiquetados.",
+        "examples": ["Fraude", "Churn", "Clasificación de documentos"],
     },
     "Aprendizaje No Supervisado": {
-        "color": "#4ea8de",
+        "kind": "concepto",
+        "domain": "ML",
         "size": 18,
         "year": 1958,
-        "title": "Busca patrones, grupos o estructuras ocultas en datos sin etiquetas.",
+        "title": "Busca patrones o grupos en datos sin etiquetas.",
+        "examples": ["Segmentación de clientes", "Detección de anomalías"],
     },
     "Aprendizaje por Refuerzo": {
-        "color": "#4ea8de",
+        "kind": "concepto",
+        "domain": "ML",
         "size": 18,
         "year": 1989,
-        "title": "Un agente aprende a tomar decisiones maximizando recompensas en un entorno.",
+        "title": "Un agente aprende maximizando recompensas.",
+        "examples": ["Juegos", "Control", "Robótica"],
     },
     "Regresión Lineal": {
-        "color": "#5dade2",
+        "kind": "herramienta",
+        "domain": "ML",
         "size": 14,
         "year": 1805,
-        "title": "Algoritmo simple para predecir valores continuos mediante una relación lineal.",
+        "title": "Algoritmo clásico para predicción continua.",
+        "examples": ["Predicción de precios", "Series simples"],
     },
     "Regresión Logística": {
-        "color": "#5dade2",
+        "kind": "herramienta",
+        "domain": "ML",
         "size": 14,
         "year": 1958,
-        "title": "Modelo clásico para clasificación binaria usando probabilidades.",
+        "title": "Modelo clásico para clasificación binaria.",
     },
     "Árboles de Decisión": {
-        "color": "#5dade2",
+        "kind": "herramienta",
+        "domain": "ML",
         "size": 14,
         "year": 1963,
-        "title": "Modelo interpretable que divide los datos según reglas jerárquicas.",
+        "title": "Modelo interpretable basado en reglas jerárquicas.",
     },
     "Random Forest": {
-        "color": "#5dade2",
+        "kind": "herramienta",
+        "domain": "ML",
         "size": 14,
         "year": 2001,
-        "title": "Conjunto de árboles de decisión que mejora robustez y generalización.",
+        "title": "Conjunto de árboles para mejorar robustez.",
     },
     "XGBoost": {
-        "color": "#5dade2",
+        "kind": "herramienta",
+        "domain": "ML",
         "size": 14,
         "year": 2014,
-        "title": "Algoritmo de boosting muy potente para datos tabulares y competiciones.",
-    },
-    "SVM": {
-        "color": "#5dade2",
-        "size": 14,
-        "year": 1995,
-        "title": "Máquinas de soporte vectorial: separan clases maximizando el margen entre ellas.",
-    },
-    "KNN": {
-        "color": "#5dade2",
-        "size": 14,
-        "year": 1951,
-        "title": "Clasifica o predice usando los vecinos más cercanos en el espacio de características.",
+        "title": "Boosting potente para datos tabulares.",
+        "url": "https://xgboost.readthedocs.io/",
     },
     "K-Means": {
-        "color": "#5dade2",
+        "kind": "herramienta",
+        "domain": "ML",
         "size": 14,
         "year": 1957,
-        "title": "Algoritmo de clustering que agrupa datos según centroides.",
-    },
-    "DBSCAN": {
-        "color": "#5dade2",
-        "size": 14,
-        "year": 1996,
-        "title": "Algoritmo de clustering basado en densidad, útil para detectar ruido y formas arbitrarias.",
+        "title": "Algoritmo de clustering por centroides.",
     },
     "PCA": {
-        "color": "#5dade2",
+        "kind": "herramienta",
+        "domain": "ML",
         "size": 14,
         "year": 1901,
-        "title": "Técnica de reducción de dimensionalidad que proyecta los datos en componentes principales.",
+        "title": "Reducción de dimensionalidad por componentes principales.",
     },
 
-    # =============================
-    # Deep Learning
-    # =============================
+    # -----------------------------
+    # Deep learning / LLM
+    # -----------------------------
     "Redes Neuronales": {
-        "color": "#ff6b6b",
-        "size": 20,
+        "kind": "concepto",
+        "domain": "Deep Learning",
+        "size": 18,
         "year": 1943,
-        "title": "Modelos inspirados en neuronas artificiales, base de gran parte del deep learning.",
+        "title": "Base del deep learning.",
     },
     "CNN": {
-        "color": "#ff6b6b",
+        "kind": "herramienta",
+        "domain": "Deep Learning",
         "size": 14,
         "year": 1998,
-        "title": "Redes convolucionales, muy usadas en imágenes y visión artificial.",
+        "title": "Redes convolucionales, usadas en imágenes.",
     },
     "RNN": {
-        "color": "#ff6b6b",
+        "kind": "herramienta",
+        "domain": "Deep Learning",
         "size": 14,
         "year": 1986,
-        "title": "Redes recurrentes, diseñadas para secuencias temporales o texto.",
-    },
-    "LSTM": {
-        "color": "#ff6b6b",
-        "size": 14,
-        "year": 1997,
-        "title": "Variante de RNN que maneja mejor dependencias largas en secuencias.",
+        "title": "Redes recurrentes para secuencias.",
     },
     "Transformers": {
-        "color": "#ff6b6b",
+        "kind": "herramienta",
+        "domain": "Deep Learning",
         "size": 16,
         "year": 2017,
-        "title": "Arquitectura moderna basada en atención, clave en NLP y modelos generativos.",
+        "title": "Arquitectura clave en NLP y modelos generativos.",
+        "url": "https://en.wikipedia.org/wiki/Transformer_(deep_learning_architecture)",
     },
     "Embeddings": {
-        "color": "#ff6b6b",
+        "kind": "concepto",
+        "domain": "Deep Learning",
         "size": 14,
         "year": 2003,
-        "title": "Representaciones vectoriales densas de palabras, imágenes u otros objetos.",
+        "title": "Representaciones vectoriales densas.",
     },
     "Fine-tuning": {
-        "color": "#ff6b6b",
+        "kind": "aplicacion",
+        "domain": "Deep Learning",
         "size": 14,
         "year": 2018,
-        "title": "Ajuste de un modelo preentrenado a una tarea o dominio específico.",
-    },
-
-    # =============================
-    # NLP / LLMs
-    # =============================
-    "Tokenización": {
-        "color": "#72efdd",
-        "size": 14,
-        "year": 1950,
-        "title": "Proceso de dividir texto en unidades como palabras, subpalabras o tokens.",
-    },
-    "NER": {
-        "color": "#72efdd",
-        "size": 14,
-        "year": 1995,
-        "title": "Reconocimiento de entidades nombradas como personas, lugares, organizaciones o fechas.",
-    },
-    "Clasificación de Texto": {
-        "color": "#72efdd",
-        "size": 14,
-        "year": 1960,
-        "title": "Asignación de categorías o etiquetas a documentos o frases.",
-    },
-    "Análisis de Sentimiento": {
-        "color": "#72efdd",
-        "size": 14,
-        "year": 2001,
-        "title": "Técnica para identificar polaridad u opiniones en texto.",
+        "title": "Ajuste de modelos preentrenados a tareas específicas.",
     },
     "LLMs": {
-        "color": "#72efdd",
+        "kind": "concepto",
+        "domain": "NLP",
         "size": 18,
         "year": 2018,
-        "title": "Modelos de lenguaje de gran escala entrenados sobre enormes volúmenes de texto.",
+        "title": "Modelos de lenguaje de gran escala.",
+        "examples": ["Chatbots", "RAG", "Generación de código"],
     },
     "Prompt Engineering": {
-        "color": "#72efdd",
+        "kind": "aplicacion",
+        "domain": "NLP",
         "size": 14,
         "year": 2022,
-        "title": "Diseño de instrucciones efectivas para guiar la salida de modelos generativos.",
+        "title": "Diseño de instrucciones efectivas para modelos generativos.",
     },
     "RAG": {
-        "color": "#72efdd",
-        "size": 14,
+        "kind": "aplicacion",
+        "domain": "NLP",
+        "size": 16,
         "year": 2020,
-        "title": "Retrieval-Augmented Generation: combina recuperación de información con generación de texto.",
+        "title": "Retrieval-Augmented Generation.",
+        "examples": ["Asistentes internos", "Búsqueda semántica con respuesta"],
     },
     "Vector DB": {
-        "color": "#72efdd",
+        "kind": "herramienta",
+        "domain": "NLP",
         "size": 14,
         "year": 2019,
-        "title": "Base de datos especializada en búsqueda semántica sobre embeddings.",
+        "title": "Base de datos para búsqueda semántica sobre embeddings.",
     },
     "Agentes": {
-        "color": "#72efdd",
+        "kind": "aplicacion",
+        "domain": "NLP",
         "size": 14,
         "year": 2023,
-        "title": "Sistemas que usan modelos para razonar, planificar y ejecutar acciones con herramientas.",
+        "title": "Sistemas que razonan, usan herramientas y ejecutan acciones.",
     },
     "Evaluación LLM": {
-        "color": "#72efdd",
+        "kind": "aplicacion",
+        "domain": "NLP",
         "size": 14,
         "year": 2023,
-        "title": "Prácticas para medir calidad, seguridad, factualidad y utilidad de modelos de lenguaje.",
+        "title": "Evaluación de calidad, seguridad y factualidad de LLMs.",
     },
 
-    # =============================
-    # Visión Artificial
-    # =============================
+    # -----------------------------
+    # Visión
+    # -----------------------------
     "Clasificación de Imágenes": {
-        "color": "#80ed99",
+        "kind": "aplicacion",
+        "domain": "Visión",
         "size": 14,
         "year": 1990,
         "title": "Predice la categoría principal de una imagen.",
     },
     "Detección de Objetos": {
-        "color": "#80ed99",
+        "kind": "aplicacion",
+        "domain": "Visión",
         "size": 14,
         "year": 2001,
-        "title": "Detecta y localiza objetos dentro de una imagen usando cajas delimitadoras.",
+        "title": "Detecta y localiza objetos en imágenes.",
     },
     "Segmentación": {
-        "color": "#80ed99",
+        "kind": "aplicacion",
+        "domain": "Visión",
         "size": 14,
         "year": 1979,
-        "title": "Divide una imagen en regiones o píxeles con significado específico.",
+        "title": "Divide una imagen en regiones o píxeles significativos.",
     },
     "YOLO": {
-        "color": "#80ed99",
+        "kind": "herramienta",
+        "domain": "Visión",
         "size": 14,
         "year": 2016,
-        "title": "Familia de modelos rápidos para detección de objetos en tiempo real.",
+        "title": "Familia de modelos rápidos para detección en tiempo real.",
+        "url": "https://docs.ultralytics.com/",
     },
     "OpenCV": {
-        "color": "#80ed99",
+        "kind": "libreria",
+        "domain": "Visión",
         "size": 14,
         "year": 2000,
-        "title": "Librería muy usada para procesamiento de imágenes y visión por computador.",
+        "title": "Librería popular para procesamiento de imágenes y visión por computador.",
+        "functions": ["imread", "resize", "cvtColor", "VideoCapture", "findContours"],
+        "url": "https://opencv.org/",
     },
 
-    # =============================
-    # MLOps / despliegue
-    # =============================
-    "CI/CD": {
-        "color": "#c77dff",
-        "size": 14,
-        "year": 2000,
-        "title": "Integración y despliegue continuo para automatizar pruebas y entregas.",
-    },
+    # -----------------------------
+    # MLOps / Software / Data
+    # -----------------------------
     "Docker": {
-        "color": "#c77dff",
+        "kind": "herramienta",
+        "domain": "MLOps",
         "size": 14,
         "year": 2013,
-        "title": "Tecnología para empaquetar aplicaciones y modelos en contenedores reproducibles.",
+        "title": "Contenedores reproducibles para aplicaciones y modelos.",
+        "url": "https://www.docker.com/",
     },
     "Kubernetes": {
-        "color": "#c77dff",
+        "kind": "herramienta",
+        "domain": "MLOps",
         "size": 14,
         "year": 2014,
-        "title": "Orquestador de contenedores para despliegue, escalado y operación de servicios.",
+        "title": "Orquestador de contenedores.",
+        "url": "https://kubernetes.io/",
     },
     "MLflow": {
-        "color": "#c77dff",
+        "kind": "herramienta",
+        "domain": "MLOps",
         "size": 14,
         "year": 2018,
-        "title": "Herramienta para seguimiento de experimentos, modelos y ciclos de vida de ML.",
+        "title": "Seguimiento de experimentos y ciclo de vida de modelos.",
+        "url": "https://mlflow.org/",
     },
-    "Serving": {
-        "color": "#c77dff",
+    "FastAPI": {
+        "kind": "libreria",
+        "domain": "Software",
         "size": 14,
-        "year": 2015,
-        "title": "Publicación de modelos para inferencia en tiempo real o batch.",
+        "year": 2018,
+        "title": "Framework de Python para construir APIs rápidas.",
+        "functions": ["FastAPI", "get", "post", "Depends", "BackgroundTasks"],
+        "url": "https://fastapi.tiangolo.com/",
     },
-    "Monitoreo de Modelos": {
-        "color": "#c77dff",
+    "Streamlit": {
+        "kind": "libreria",
+        "domain": "Python",
         "size": 14,
         "year": 2019,
-        "title": "Seguimiento del desempeño, deriva y salud de modelos en producción.",
-    },
-    "Drift": {
-        "color": "#c77dff",
-        "size": 14,
-        "year": 2010,
-        "title": "Cambio en datos o comportamiento del entorno que afecta la calidad del modelo.",
-    },
-
-    # =============================
-    # Data Engineering
-    # =============================
-    "ETL": {
-        "color": "#a8dadc",
-        "size": 14,
-        "year": 1970,
-        "title": "Proceso de extracción, transformación y carga de datos.",
-    },
-    "Pipelines": {
-        "color": "#a8dadc",
-        "size": 14,
-        "year": 2010,
-        "title": "Flujos automatizados para mover, transformar y procesar datos.",
-    },
-    "Data Lake": {
-        "color": "#a8dadc",
-        "size": 14,
-        "year": 2011,
-        "title": "Repositorio escalable para almacenar datos estructurados y no estructurados.",
-    },
-    "Data Warehouse": {
-        "color": "#a8dadc",
-        "size": 14,
-        "year": 1988,
-        "title": "Base orientada a analítica y consultas estructuradas para BI.",
-    },
-    "Streaming": {
-        "color": "#a8dadc",
-        "size": 14,
-        "year": 1992,
-        "title": "Procesamiento continuo de eventos o datos en tiempo real.",
+        "title": "Framework Python para construir apps interactivas de datos.",
+        "functions": ["title", "write", "sidebar", "selectbox", "dataframe"],
+        "url": "https://streamlit.io/",
     },
     "Airflow": {
-        "color": "#a8dadc",
+        "kind": "herramienta",
+        "domain": "Data Engineering",
         "size": 14,
         "year": 2015,
-        "title": "Plataforma popular para orquestación de workflows y pipelines.",
+        "title": "Orquestador de pipelines.",
+        "url": "https://airflow.apache.org/",
     },
     "Kafka": {
-        "color": "#a8dadc",
+        "kind": "herramienta",
+        "domain": "Data Engineering",
         "size": 14,
         "year": 2011,
-        "title": "Sistema distribuido para mensajería y streaming de eventos.",
+        "title": "Streaming y mensajería distribuida.",
+        "url": "https://kafka.apache.org/",
     },
-    "Calidad de Datos": {
-        "color": "#a8dadc",
+    "ETL": {
+        "kind": "aplicacion",
+        "domain": "Data Engineering",
         "size": 14,
-        "year": 2000,
-        "title": "Prácticas para asegurar consistencia, completitud, precisión y confiabilidad de datos.",
+        "year": 1970,
+        "title": "Extracción, transformación y carga de datos.",
+    },
+    "Pipelines": {
+        "kind": "concepto",
+        "domain": "Data Engineering",
+        "size": 14,
+        "year": 2010,
+        "title": "Flujos automatizados de procesamiento de datos.",
     },
 
-    # =============================
+    # -----------------------------
     # Cloud
-    # =============================
-    "Cloud Computing": {
-        "color": "#ffd166",
-        "size": 24,
-        "year": 2006,
-        "title": "Uso de infraestructura, plataformas y servicios remotos para desarrollar y operar sistemas.",
-    },
+    # -----------------------------
     "AWS": {
-        "color": "#ffd166",
+        "kind": "herramienta",
+        "domain": "Cloud",
         "size": 14,
         "year": 2006,
         "title": "Proveedor líder de servicios cloud.",
+        "url": "https://aws.amazon.com/",
     },
     "Azure": {
-        "color": "#ffd166",
+        "kind": "herramienta",
+        "domain": "Cloud",
         "size": 14,
         "year": 2010,
         "title": "Plataforma cloud de Microsoft.",
+        "url": "https://azure.microsoft.com/",
     },
     "GCP": {
-        "color": "#ffd166",
+        "kind": "herramienta",
+        "domain": "Cloud",
         "size": 14,
         "year": 2008,
-        "title": "Google Cloud Platform, enfocada en datos, ML y servicios escalables.",
-    },
-    "Huawei Cloud": {
-        "color": "#ffd166",
-        "size": 14,
-        "year": 2017,
-        "title": "Plataforma cloud de Huawei con servicios de infraestructura, datos y ML.",
-    },
-    "IaaS": {
-        "color": "#ffd166",
-        "size": 14,
-        "year": 2006,
-        "title": "Infraestructura como servicio.",
-    },
-    "PaaS": {
-        "color": "#ffd166",
-        "size": 14,
-        "year": 2007,
-        "title": "Plataforma como servicio.",
-    },
-    "SaaS": {
-        "color": "#ffd166",
-        "size": 14,
-        "year": 1999,
-        "title": "Software como servicio.",
-    },
-    "Serverless": {
-        "color": "#ffd166",
-        "size": 14,
-        "year": 2014,
-        "title": "Modelo donde el proveedor administra la infraestructura y se ejecuta bajo demanda.",
+        "title": "Google Cloud Platform.",
+        "url": "https://cloud.google.com/",
     },
     "Terraform": {
-        "color": "#ffd166",
+        "kind": "herramienta",
+        "domain": "Cloud",
         "size": 14,
         "year": 2014,
-        "title": "Infraestructura como código para aprovisionar recursos cloud.",
+        "title": "Infraestructura como código.",
+        "url": "https://developer.hashicorp.com/terraform/docs",
+    },
+    "Serverless": {
+        "kind": "concepto",
+        "domain": "Cloud",
+        "size": 14,
+        "year": 2014,
+        "title": "Modelo donde la infraestructura la gestiona el proveedor.",
     },
     "IAM": {
-        "color": "#ffd166",
+        "kind": "concepto",
+        "domain": "Cloud",
         "size": 14,
         "year": 1999,
         "title": "Gestión de identidades y accesos.",
     },
     "Object Storage": {
-        "color": "#ffd166",
+        "kind": "concepto",
+        "domain": "Cloud",
         "size": 14,
         "year": 2006,
-        "title": "Servicio de almacenamiento escalable basado en objetos.",
+        "title": "Almacenamiento basado en objetos.",
     },
-    "Cloud Security": {
-        "color": "#ffd166",
-        "size": 14,
+
+    # -----------------------------
+    # Python / librerías
+    # -----------------------------
+    "Pandas": {
+        "kind": "libreria",
+        "domain": "Python",
+        "size": 18,
+        "year": 2008,
+        "title": "Manipulación de datos tabulares.",
+        "examples": ["Leer CSV", "Agrupar datos", "Limpieza de columnas"],
+        "functions": ["read_csv", "DataFrame", "merge", "groupby", "pivot_table", "fillna"],
+        "url": "https://pandas.pydata.org/",
+    },
+    "NumPy": {
+        "kind": "libreria",
+        "domain": "Python",
+        "size": 18,
+        "year": 2006,
+        "title": "Cálculo numérico y arreglos multidimensionales.",
+        "functions": ["array", "mean", "dot", "linspace", "linalg.inv"],
+        "url": "https://numpy.org/",
+    },
+    "Matplotlib": {
+        "kind": "libreria",
+        "domain": "Python",
+        "size": 16,
+        "year": 2003,
+        "title": "Visualización en Python.",
+        "functions": ["plot", "scatter", "bar", "imshow", "figure"],
+        "url": "https://matplotlib.org/",
+    },
+    "scikit-learn": {
+        "kind": "libreria",
+        "domain": "Python",
+        "size": 18,
+        "year": 2007,
+        "title": "Librería estándar de ML clásico en Python.",
+        "functions": ["fit", "predict", "train_test_split", "Pipeline", "GridSearchCV"],
+        "url": "https://scikit-learn.org/",
+    },
+    "PyTorch": {
+        "kind": "libreria",
+        "domain": "Python",
+        "size": 18,
+        "year": 2016,
+        "title": "Framework de deep learning muy usado en investigación y producción.",
+        "functions": ["tensor", "nn.Module", "DataLoader", "optim.Adam", "backward"],
+        "url": "https://pytorch.org/",
+    },
+    "TensorFlow": {
+        "kind": "libreria",
+        "domain": "Python",
+        "size": 18,
+        "year": 2015,
+        "title": "Framework de ML y deep learning.",
+        "functions": ["keras.Sequential", "fit", "predict", "GradientTape"],
+        "url": "https://www.tensorflow.org/",
+    },
+    "spaCy": {
+        "kind": "libreria",
+        "domain": "Python",
+        "size": 16,
+        "year": 2015,
+        "title": "Librería potente para NLP industrial.",
+        "functions": ["load", "nlp", "ents", "tokenizer"],
+        "url": "https://spacy.io/",
+    },
+    "Transformers Library": {
+        "kind": "libreria",
+        "domain": "Python",
+        "size": 16,
+        "year": 2019,
+        "title": "Librería de Hugging Face para modelos transformer.",
+        "functions": ["pipeline", "AutoTokenizer", "AutoModel", "Trainer"],
+        "url": "https://huggingface.co/docs/transformers/index",
+    },
+
+    # -----------------------------
+    # Sitios y datasets
+    # -----------------------------
+    "Hugging Face": {
+        "kind": "sitio",
+        "domain": "IA",
+        "size": 18,
+        "year": 2016,
+        "title": "Plataforma clave para modelos, datasets y demos de IA.",
+        "examples": ["Descargar modelos", "Explorar datasets", "Publicar Spaces"],
+        "url": "https://huggingface.co/",
+    },
+    "Kaggle": {
+        "kind": "sitio",
+        "domain": "Datos",
+        "size": 18,
         "year": 2010,
-        "title": "Prácticas y controles para proteger sistemas y datos en la nube.",
+        "title": "Plataforma de datasets, notebooks y competencias.",
+        "url": "https://www.kaggle.com/",
     },
-
-    # =============================
-    # Desarrollo de software
-    # =============================
-    "Desarrollo de Software": {
-        "color": "#06d6a0",
-        "size": 24,
-        "year": 1968,
-        "title": "Disciplina para diseñar, construir, probar y mantener aplicaciones.",
+    "Papers with Code": {
+        "kind": "sitio",
+        "domain": "IA",
+        "size": 18,
+        "year": 2019,
+        "title": "Relaciona papers con código y benchmarks.",
+        "url": "https://paperswithcode.com/",
     },
-    "Backend": {
-        "color": "#06d6a0",
-        "size": 14,
-        "year": 1990,
-        "title": "Lógica de servidor, APIs, bases de datos y reglas de negocio.",
+    "UCI ML Repository": {
+        "kind": "sitio",
+        "domain": "Datos",
+        "size": 16,
+        "year": 1987,
+        "title": "Repositorio clásico de datasets para ML.",
+        "url": "https://archive.ics.uci.edu/",
     },
-    "Frontend": {
-        "color": "#06d6a0",
-        "size": 14,
-        "year": 1990,
-        "title": "Interfaz de usuario y experiencia visual de la aplicación.",
+    "Roboflow": {
+        "kind": "sitio",
+        "domain": "Visión",
+        "size": 16,
+        "year": 2020,
+        "title": "Herramientas y datasets para visión artificial.",
+        "url": "https://roboflow.com/",
     },
-    "APIs": {
-        "color": "#06d6a0",
-        "size": 14,
+    "Datasets": {
+        "kind": "concepto",
+        "domain": "Datos",
+        "size": 20,
         "year": 2000,
-        "title": "Interfaces que permiten la comunicación entre sistemas.",
+        "title": "Colecciones de datos usadas para entrenar y evaluar modelos.",
+        "examples": ["Texto", "Imágenes", "Audio", "Tabular"],
     },
-    "Microservicios": {
-        "color": "#06d6a0",
-        "size": 14,
-        "year": 2011,
-        "title": "Arquitectura de servicios pequeños, independientes y desplegables por separado.",
+    "COCO": {
+        "kind": "dataset",
+        "domain": "Visión",
+        "size": 16,
+        "year": 2014,
+        "title": "Dataset popular para detección y segmentación.",
+        "url": "https://cocodataset.org/",
     },
-    "Testing": {
-        "color": "#06d6a0",
-        "size": 14,
-        "year": 1979,
-        "title": "Pruebas para validar el comportamiento y calidad del software.",
+    "ImageNet": {
+        "kind": "dataset",
+        "domain": "Visión",
+        "size": 16,
+        "year": 2009,
+        "title": "Dataset clásico para clasificación de imágenes.",
+        "url": "https://www.image-net.org/",
     },
-    "Git": {
-        "color": "#06d6a0",
-        "size": 14,
-        "year": 2005,
-        "title": "Sistema de control de versiones para colaboración y trazabilidad del código.",
-    },
-    "Arquitectura de Software": {
-        "color": "#06d6a0",
-        "size": 14,
-        "year": 1969,
-        "title": "Diseño de componentes, integraciones, escalabilidad y mantenibilidad del sistema.",
-    },
-    "FastAPI": {
-        "color": "#06d6a0",
-        "size": 14,
-        "year": 2018,
-        "title": "Framework moderno de Python para construir APIs rápidas.",
+    "SQuAD": {
+        "kind": "dataset",
+        "domain": "NLP",
+        "size": 16,
+        "year": 2016,
+        "title": "Dataset de preguntas y respuestas en NLP.",
+        "url": "https://rajpurkar.github.io/SQuAD-explorer/",
     },
 
-    # =============================
-    # Responsible AI / seguridad
-    # =============================
-    "Robustez": {
-        "color": "#f28482",
+    # -----------------------------
+    # Robótica
+    # -----------------------------
+    "ROS": {
+        "kind": "herramienta",
+        "domain": "Robótica",
+        "size": 18,
+        "year": 2007,
+        "title": "Robot Operating System para control modular y comunicación entre nodos.",
+        "url": "https://www.ros.org/",
+    },
+    "SLAM": {
+        "kind": "aplicacion",
+        "domain": "Robótica",
+        "size": 16,
+        "year": 1986,
+        "title": "Simultaneous Localization and Mapping.",
+        "examples": ["Robots móviles", "Mapeo con LiDAR"],
+    },
+    "Control de Movimiento": {
+        "kind": "aplicacion",
+        "domain": "Robótica",
+        "size": 16,
+        "year": 1960,
+        "title": "Control y planificación de trayectorias de actuadores.",
+    },
+    "Servos": {
+        "kind": "herramienta",
+        "domain": "Robótica",
         "size": 14,
-        "year": 1990,
-        "title": "Capacidad del sistema para resistir ruido, ataques o cambios inesperados.",
+        "year": 1930,
+        "title": "Actuadores usados para control angular o lineal.",
+    },
+    "Raspberry Pi": {
+        "kind": "herramienta",
+        "domain": "Robótica",
+        "size": 16,
+        "year": 2012,
+        "title": "Computador embebido popular para prototipos robóticos.",
+        "url": "https://www.raspberrypi.com/",
+    },
+    "Sensores": {
+        "kind": "herramienta",
+        "domain": "Robótica",
+        "size": 14,
+        "year": 1950,
+        "title": "Dispositivos para medir variables del entorno o del robot.",
+    },
+    "Actuadores": {
+        "kind": "herramienta",
+        "domain": "Robótica",
+        "size": 14,
+        "year": 1950,
+        "title": "Componentes que producen movimiento o acción física.",
+    },
+
+    # -----------------------------
+    # Responsible AI / quantum
+    # -----------------------------
+    "Guardrails": {
+        "kind": "herramienta",
+        "domain": "Responsible AI",
+        "size": 14,
+        "year": 2023,
+        "title": "Mecanismos para restringir o validar respuestas de IA.",
+        "url": "https://www.guardrailsai.com/",
     },
     "Seguridad IA": {
-        "color": "#f28482",
+        "kind": "concepto",
+        "domain": "Responsible AI",
         "size": 14,
         "year": 2023,
-        "title": "Protección contra ataques, fugas, abuso y comportamientos inseguros en sistemas de IA.",
-    },
-    "Gobernanza de IA": {
-        "color": "#f28482",
-        "size": 14,
-        "year": 2018,
-        "title": "Políticas, controles y trazabilidad para operar IA de manera responsable.",
-    },
-    "Guardrails": {
-        "color": "#f28482",
-        "size": 14,
-        "year": 2023,
-        "title": "Restricciones y mecanismos de control para reducir respuestas dañinas o fuera de política.",
-    },
-
-    # =============================
-    # Quantum Computing
-    # =============================
-    "Computación Cuántica": {
-        "color": "#9b5de5",
-        "size": 24,
-        "year": 1980,
-        "title": "Paradigma de cómputo basado en qubits, superposición y entrelazamiento.",
-    },
-    "Qubits": {
-        "color": "#9b5de5",
-        "size": 16,
-        "year": 1995,
-        "title": "Unidad básica de información cuántica.",
-    },
-    "Superposición": {
-        "color": "#9b5de5",
-        "size": 14,
-        "year": 1926,
-        "title": "Propiedad que permite a un estado cuántico combinar múltiples posibilidades.",
-    },
-    "Entrelazamiento": {
-        "color": "#9b5de5",
-        "size": 14,
-        "year": 1935,
-        "title": "Correlación cuántica fuerte entre qubits.",
-    },
-    "Puertas Cuánticas": {
-        "color": "#9b5de5",
-        "size": 14,
-        "year": 1995,
-        "title": "Operaciones que transforman estados cuánticos en un circuito.",
-    },
-    "Circuitos Cuánticos": {
-        "color": "#9b5de5",
-        "size": 14,
-        "year": 1989,
-        "title": "Secuencia de puertas cuánticas aplicada a qubits.",
-    },
-    "Medición Cuántica": {
-        "color": "#9b5de5",
-        "size": 14,
-        "year": 1926,
-        "title": "Proceso de observación que colapsa el estado cuántico a un resultado clásico.",
-    },
-    "Algoritmo de Grover": {
-        "color": "#9b5de5",
-        "size": 14,
-        "year": 1996,
-        "title": "Algoritmo cuántico para búsqueda con aceleración cuadrática idealizada.",
-    },
-    "Algoritmo de Shor": {
-        "color": "#9b5de5",
-        "size": 14,
-        "year": 1994,
-        "title": "Algoritmo cuántico conocido por factorizar enteros en ciertos contextos.",
-    },
-    "QAOA": {
-        "color": "#9b5de5",
-        "size": 14,
-        "year": 2014,
-        "title": "Quantum Approximate Optimization Algorithm, método híbrido para optimización.",
-    },
-    "VQE": {
-        "color": "#9b5de5",
-        "size": 14,
-        "year": 2014,
-        "title": "Variational Quantum Eigensolver, algoritmo híbrido usado en simulación cuántica.",
+        "title": "Protección contra abuso, fuga o comportamientos inseguros.",
     },
     "Qiskit": {
-        "color": "#9b5de5",
-        "size": 14,
+        "kind": "libreria",
+        "domain": "Quantum",
+        "size": 16,
         "year": 2017,
-        "title": "SDK popular para programación y experimentación en computación cuántica.",
+        "title": "SDK para programación cuántica.",
+        "functions": ["QuantumCircuit", "transpile", "measure_all", "AerSimulator"],
+        "url": "https://qiskit.org/",
     },
     "Quantum Machine Learning": {
-        "color": "#9b5de5",
+        "kind": "concepto",
+        "domain": "Quantum",
         "size": 16,
         "year": 2017,
         "title": "Intersección entre computación cuántica y aprendizaje automático.",
     },
 }
 
-# =========================================================
-# Recursos / links por concepto
-# =========================================================
-resources = {
-    "Inteligencia Artificial": "https://es.wikipedia.org/wiki/Inteligencia_artificial",
-    "Machine Learning": "https://es.wikipedia.org/wiki/Aprendizaje_autom%C3%A1tico",
-    "Deep Learning": "https://es.wikipedia.org/wiki/Aprendizaje_profundo",
-    "NLP": "https://es.wikipedia.org/wiki/Procesamiento_del_lenguaje_natural",
-    "Visión Artificial": "https://es.wikipedia.org/wiki/Visi%C3%B3n_artificial",
-    "MLOps": "https://en.wikipedia.org/wiki/MLOps",
-    "Data Engineering": "https://en.wikipedia.org/wiki/Data_engineering",
-    "Responsible AI": "https://www.ibm.com/think/topics/responsible-ai",
-
-    "Aprendizaje Supervisado": "https://developers.google.com/machine-learning/glossary#supervised-learning",
-    "Aprendizaje No Supervisado": "https://developers.google.com/machine-learning/glossary#unsupervised-learning",
-    "Aprendizaje por Refuerzo": "https://en.wikipedia.org/wiki/Reinforcement_learning",
-    "Regresión Lineal": "https://es.wikipedia.org/wiki/Regresi%C3%B3n_lineal",
-    "Regresión Logística": "https://es.wikipedia.org/wiki/Regresi%C3%B3n_log%C3%ADstica",
-    "Árboles de Decisión": "https://es.wikipedia.org/wiki/%C3%81rbol_de_decisi%C3%B3n",
-    "Random Forest": "https://en.wikipedia.org/wiki/Random_forest",
-    "XGBoost": "https://xgboost.readthedocs.io/",
-    "SVM": "https://es.wikipedia.org/wiki/M%C3%A1quinas_de_vectores_de_soporte",
-    "KNN": "https://es.wikipedia.org/wiki/K_vecinos_m%C3%A1s_pr%C3%B3ximos",
-    "K-Means": "https://es.wikipedia.org/wiki/K-means",
-    "DBSCAN": "https://en.wikipedia.org/wiki/DBSCAN",
-    "PCA": "https://es.wikipedia.org/wiki/An%C3%A1lisis_de_componentes_principales",
-
-    "Redes Neuronales": "https://es.wikipedia.org/wiki/Red_neuronal_artificial",
-    "CNN": "https://en.wikipedia.org/wiki/Convolutional_neural_network",
-    "RNN": "https://en.wikipedia.org/wiki/Recurrent_neural_network",
-    "LSTM": "https://en.wikipedia.org/wiki/Long_short-term_memory",
-    "Transformers": "https://en.wikipedia.org/wiki/Transformer_(deep_learning_architecture)",
-    "Embeddings": "https://developers.google.com/machine-learning/crash-course/embeddings/video-lecture",
-    "Fine-tuning": "https://platform.openai.com/docs/guides/fine-tuning",
-
-    "Tokenización": "https://es.wikipedia.org/wiki/Tokenizaci%C3%B3n",
-    "NER": "https://en.wikipedia.org/wiki/Named-entity_recognition",
-    "Clasificación de Texto": "https://developers.google.com/machine-learning/guides/text-classification",
-    "Análisis de Sentimiento": "https://es.wikipedia.org/wiki/An%C3%A1lisis_de_sentimientos",
-    "LLMs": "https://en.wikipedia.org/wiki/Large_language_model",
-    "Prompt Engineering": "https://platform.openai.com/docs/guides/prompt-engineering",
-    "RAG": "https://www.pinecone.io/learn/retrieval-augmented-generation/",
-    "Vector DB": "https://www.pinecone.io/learn/vector-database/",
-    "Agentes": "https://platform.openai.com/docs/guides/agents",
-    "Evaluación LLM": "https://platform.openai.com/docs/guides/evals",
-
-    "Clasificación de Imágenes": "https://developers.google.com/machine-learning/practica/image-classification",
-    "Detección de Objetos": "https://en.wikipedia.org/wiki/Object_detection",
-    "Segmentación": "https://en.wikipedia.org/wiki/Image_segmentation",
-    "YOLO": "https://docs.ultralytics.com/",
-    "OpenCV": "https://opencv.org/",
-
-    "CI/CD": "https://es.wikipedia.org/wiki/CI/CD",
-    "Docker": "https://www.docker.com/",
-    "Kubernetes": "https://kubernetes.io/",
-    "MLflow": "https://mlflow.org/",
-    "Serving": "https://en.wikipedia.org/wiki/Model_serving",
-    "Monitoreo de Modelos": "https://evidentlyai.com/ml-observability",
-    "Drift": "https://evidentlyai.com/ml-in-production/data-drift",
-
-    "ETL": "https://es.wikipedia.org/wiki/Extract,_transform,_load",
-    "Pipelines": "https://en.wikipedia.org/wiki/Data_pipeline",
-    "Data Lake": "https://es.wikipedia.org/wiki/Data_lake",
-    "Data Warehouse": "https://es.wikipedia.org/wiki/Data_warehouse",
-    "Streaming": "https://en.wikipedia.org/wiki/Stream_processing",
-    "Airflow": "https://airflow.apache.org/",
-    "Kafka": "https://kafka.apache.org/",
-    "Calidad de Datos": "https://en.wikipedia.org/wiki/Data_quality",
-
-    "Cloud Computing": "https://es.wikipedia.org/wiki/Computaci%C3%B3n_en_la_nube",
-    "AWS": "https://aws.amazon.com/",
-    "Azure": "https://azure.microsoft.com/",
-    "GCP": "https://cloud.google.com/",
-    "Huawei Cloud": "https://www.huaweicloud.com/intl/en-us/",
-    "IaaS": "https://en.wikipedia.org/wiki/Infrastructure_as_a_service",
-    "PaaS": "https://en.wikipedia.org/wiki/Platform_as_a_service",
-    "SaaS": "https://en.wikipedia.org/wiki/Software_as_a_service",
-    "Serverless": "https://en.wikipedia.org/wiki/Serverless_computing",
-    "Terraform": "https://developer.hashicorp.com/terraform/docs",
-    "IAM": "https://en.wikipedia.org/wiki/Identity_and_access_management",
-    "Object Storage": "https://en.wikipedia.org/wiki/Object_storage",
-    "Cloud Security": "https://en.wikipedia.org/wiki/Cloud_computing_security",
-
-    "Desarrollo de Software": "https://es.wikipedia.org/wiki/Desarrollo_de_software",
-    "Backend": "https://es.wikipedia.org/wiki/Back-end",
-    "Frontend": "https://es.wikipedia.org/wiki/Front-end_y_back-end",
-    "APIs": "https://es.wikipedia.org/wiki/Interfaz_de_programaci%C3%B3n_de_aplicaciones",
-    "Microservicios": "https://es.wikipedia.org/wiki/Microservicios",
-    "Testing": "https://es.wikipedia.org/wiki/Pruebas_de_software",
-    "Git": "https://git-scm.com/",
-    "Arquitectura de Software": "https://es.wikipedia.org/wiki/Arquitectura_de_software",
-    "FastAPI": "https://fastapi.tiangolo.com/",
-
-    "Robustez": "https://en.wikipedia.org/wiki/Robustness_(computer_science)",
-    "Seguridad IA": "https://owasp.org/www-project-top-10-for-large-language-model-applications/",
-    "Gobernanza de IA": "https://www.oecd.org/en/topics/ai-governance.html",
-    "Guardrails": "https://www.guardrailsai.com/",
-
-    "Computación Cuántica": "https://es.wikipedia.org/wiki/Computaci%C3%B3n_cu%C3%A1ntica",
-    "Qubits": "https://es.wikipedia.org/wiki/Qubit",
-    "Superposición": "https://es.wikipedia.org/wiki/Superposici%C3%B3n_cu%C3%A1ntica",
-    "Entrelazamiento": "https://es.wikipedia.org/wiki/Entrelazamiento_cu%C3%A1ntico",
-    "Puertas Cuánticas": "https://es.wikipedia.org/wiki/Puerta_cu%C3%A1ntica",
-    "Circuitos Cuánticos": "https://en.wikipedia.org/wiki/Quantum_circuit",
-    "Medición Cuántica": "https://en.wikipedia.org/wiki/Measurement_in_quantum_mechanics",
-    "Algoritmo de Grover": "https://es.wikipedia.org/wiki/Algoritmo_de_Grover",
-    "Algoritmo de Shor": "https://es.wikipedia.org/wiki/Algoritmo_de_Shor",
-    "QAOA": "https://en.wikipedia.org/wiki/Quantum_optimization_algorithms#QAOA",
-    "VQE": "https://en.wikipedia.org/wiki/Variational_quantum_eigensolver",
-    "Qiskit": "https://qiskit.org/",
-    "Quantum Machine Learning": "https://en.wikipedia.org/wiki/Quantum_machine_learning",
-}
-
-# Añadir links a los nodos
-for node_name in nodes:
-    nodes[node_name]["url"] = resources.get(node_name, "")
-
-# =========================================================
-# Relaciones
-# =========================================================
 edges = [
-    ("Inteligencia Artificial", "Machine Learning"),
-    ("Inteligencia Artificial", "Deep Learning"),
-    ("Inteligencia Artificial", "NLP"),
-    ("Inteligencia Artificial", "Visión Artificial"),
-    ("Inteligencia Artificial", "MLOps"),
-    ("Inteligencia Artificial", "Data Engineering"),
-    ("Inteligencia Artificial", "Responsible AI"),
+    # tronco
+    ("Inteligencia Artificial", "Machine Learning", "subárea"),
+    ("Inteligencia Artificial", "Deep Learning", "subárea"),
+    ("Deep Learning", "Generative AI", "evolución"),
+    ("Inteligencia Artificial", "NLP", "subárea"),
+    ("Inteligencia Artificial", "Visión Artificial", "subárea"),
+    ("Inteligencia Artificial", "Cloud Computing", "infraestructura"),
+    ("Inteligencia Artificial", "Data Engineering", "datos"),
+    ("Inteligencia Artificial", "MLOps", "operación"),
+    ("Inteligencia Artificial", "Python", "lenguaje"),
+    ("Inteligencia Artificial", "Robótica", "aplicación"),
+    ("Inteligencia Artificial", "Responsible AI", "gobernanza"),
+    ("Inteligencia Artificial", "Computación Cuántica", "frontera"),
 
-    ("Machine Learning", "Aprendizaje Supervisado"),
-    ("Machine Learning", "Aprendizaje No Supervisado"),
-    ("Machine Learning", "Aprendizaje por Refuerzo"),
-    ("Aprendizaje Supervisado", "Regresión Lineal"),
-    ("Aprendizaje Supervisado", "Regresión Logística"),
-    ("Aprendizaje Supervisado", "Árboles de Decisión"),
-    ("Aprendizaje Supervisado", "Random Forest"),
-    ("Aprendizaje Supervisado", "XGBoost"),
-    ("Aprendizaje Supervisado", "SVM"),
-    ("Aprendizaje Supervisado", "KNN"),
-    ("Aprendizaje No Supervisado", "K-Means"),
-    ("Aprendizaje No Supervisado", "DBSCAN"),
-    ("Aprendizaje No Supervisado", "PCA"),
+    # ML
+    ("Machine Learning", "Aprendizaje Supervisado", "tipo"),
+    ("Machine Learning", "Aprendizaje No Supervisado", "tipo"),
+    ("Machine Learning", "Aprendizaje por Refuerzo", "tipo"),
+    ("Aprendizaje Supervisado", "Regresión Lineal", "algoritmo"),
+    ("Aprendizaje Supervisado", "Regresión Logística", "algoritmo"),
+    ("Aprendizaje Supervisado", "Árboles de Decisión", "algoritmo"),
+    ("Aprendizaje Supervisado", "Random Forest", "algoritmo"),
+    ("Aprendizaje Supervisado", "XGBoost", "algoritmo"),
+    ("Aprendizaje No Supervisado", "K-Means", "algoritmo"),
+    ("Aprendizaje No Supervisado", "PCA", "algoritmo"),
 
-    ("Deep Learning", "Redes Neuronales"),
-    ("Redes Neuronales", "CNN"),
-    ("Redes Neuronales", "RNN"),
-    ("RNN", "LSTM"),
-    ("Deep Learning", "Transformers"),
-    ("Deep Learning", "Embeddings"),
-    ("Deep Learning", "Fine-tuning"),
-    ("Transformers", "LLMs"),
+    # DL / NLP / LLM
+    ("Deep Learning", "Redes Neuronales", "base"),
+    ("Redes Neuronales", "CNN", "arquitectura"),
+    ("Redes Neuronales", "RNN", "arquitectura"),
+    ("Deep Learning", "Transformers", "arquitectura"),
+    ("Deep Learning", "Embeddings", "representación"),
+    ("Deep Learning", "Fine-tuning", "ajuste"),
+    ("NLP", "LLMs", "modelo"),
+    ("LLMs", "Prompt Engineering", "uso"),
+    ("LLMs", "RAG", "uso"),
+    ("LLMs", "Agentes", "uso"),
+    ("LLMs", "Evaluación LLM", "evaluación"),
+    ("RAG", "Vector DB", "infraestructura"),
+    ("Transformers", "LLMs", "base"),
 
-    ("NLP", "Tokenización"),
-    ("NLP", "NER"),
-    ("NLP", "Clasificación de Texto"),
-    ("NLP", "Análisis de Sentimiento"),
-    ("NLP", "LLMs"),
-    ("LLMs", "Prompt Engineering"),
-    ("LLMs", "RAG"),
-    ("LLMs", "Agentes"),
-    ("RAG", "Vector DB"),
-    ("LLMs", "Evaluación LLM"),
+    # visión
+    ("Visión Artificial", "Clasificación de Imágenes", "aplicación"),
+    ("Visión Artificial", "Detección de Objetos", "aplicación"),
+    ("Visión Artificial", "Segmentación", "aplicación"),
+    ("Visión Artificial", "YOLO", "herramienta"),
+    ("Visión Artificial", "OpenCV", "librería"),
+    ("YOLO", "Detección de Objetos", "resuelve"),
 
-    ("Visión Artificial", "Clasificación de Imágenes"),
-    ("Visión Artificial", "Detección de Objetos"),
-    ("Visión Artificial", "Segmentación"),
-    ("Detección de Objetos", "YOLO"),
-    ("Visión Artificial", "OpenCV"),
+    # MLOps / data / software
+    ("MLOps", "Docker", "herramienta"),
+    ("MLOps", "Kubernetes", "herramienta"),
+    ("MLOps", "MLflow", "herramienta"),
+    ("MLOps", "FastAPI", "serving"),
+    ("Data Engineering", "ETL", "proceso"),
+    ("Data Engineering", "Pipelines", "flujo"),
+    ("Data Engineering", "Airflow", "orquestación"),
+    ("Data Engineering", "Kafka", "streaming"),
 
-    ("MLOps", "CI/CD"),
-    ("MLOps", "Docker"),
-    ("MLOps", "Kubernetes"),
-    ("MLOps", "MLflow"),
-    ("MLOps", "Serving"),
-    ("MLOps", "Monitoreo de Modelos"),
-    ("Monitoreo de Modelos", "Drift"),
+    # Cloud
+    ("Cloud Computing", "AWS", "proveedor"),
+    ("Cloud Computing", "Azure", "proveedor"),
+    ("Cloud Computing", "GCP", "proveedor"),
+    ("Cloud Computing", "Terraform", "IaC"),
+    ("Cloud Computing", "Serverless", "modelo"),
+    ("Cloud Computing", "IAM", "seguridad"),
+    ("Cloud Computing", "Object Storage", "almacenamiento"),
+    ("Cloud Computing", "Docker", "despliegue"),
+    ("Cloud Computing", "Kubernetes", "orquestación"),
 
-    ("Data Engineering", "ETL"),
-    ("Data Engineering", "Pipelines"),
-    ("Data Engineering", "Data Lake"),
-    ("Data Engineering", "Data Warehouse"),
-    ("Data Engineering", "Streaming"),
-    ("Data Engineering", "Calidad de Datos"),
-    ("Pipelines", "Airflow"),
-    ("Streaming", "Kafka"),
-    ("Data Lake", "Data Warehouse"),
+    # Python
+    ("Python", "Pandas", "librería"),
+    ("Python", "NumPy", "librería"),
+    ("Python", "Matplotlib", "librería"),
+    ("Python", "scikit-learn", "librería"),
+    ("Python", "PyTorch", "librería"),
+    ("Python", "TensorFlow", "librería"),
+    ("Python", "FastAPI", "librería"),
+    ("Python", "Streamlit", "librería"),
+    ("Python", "spaCy", "librería"),
+    ("Python", "Transformers Library", "librería"),
 
-    ("Inteligencia Artificial", "Cloud Computing"),
-    ("Cloud Computing", "AWS"),
-    ("Cloud Computing", "Azure"),
-    ("Cloud Computing", "GCP"),
-    ("Cloud Computing", "Huawei Cloud"),
-    ("Cloud Computing", "IaaS"),
-    ("Cloud Computing", "PaaS"),
-    ("Cloud Computing", "SaaS"),
-    ("Cloud Computing", "Serverless"),
-    ("Cloud Computing", "Kubernetes"),
-    ("Cloud Computing", "Terraform"),
-    ("Cloud Computing", "IAM"),
-    ("Cloud Computing", "Object Storage"),
-    ("Cloud Computing", "Cloud Security"),
-    ("MLOps", "Cloud Computing"),
-    ("Data Engineering", "Cloud Computing"),
+    ("Machine Learning", "scikit-learn", "implementación"),
+    ("Deep Learning", "PyTorch", "implementación"),
+    ("Deep Learning", "TensorFlow", "implementación"),
+    ("NLP", "spaCy", "implementación"),
+    ("NLP", "Transformers Library", "implementación"),
+    ("Visión Artificial", "PyTorch", "implementación"),
 
-    ("Inteligencia Artificial", "Desarrollo de Software"),
-    ("Desarrollo de Software", "Backend"),
-    ("Desarrollo de Software", "Frontend"),
-    ("Desarrollo de Software", "APIs"),
-    ("Desarrollo de Software", "Microservicios"),
-    ("Desarrollo de Software", "Testing"),
-    ("Desarrollo de Software", "Git"),
-    ("Desarrollo de Software", "Arquitectura de Software"),
-    ("Backend", "FastAPI"),
-    ("APIs", "FastAPI"),
-    ("Microservicios", "Docker"),
-    ("Microservicios", "Kubernetes"),
-    ("Testing", "CI/CD"),
+    # sitios y datasets
+    ("Machine Learning", "Datasets", "requiere"),
+    ("Deep Learning", "Datasets", "requiere"),
+    ("NLP", "Datasets", "requiere"),
+    ("Visión Artificial", "Datasets", "requiere"),
+    ("Generative AI", "Hugging Face", "ecosistema"),
+    ("LLMs", "Hugging Face", "ecosistema"),
+    ("Machine Learning", "Kaggle", "competencias"),
+    ("Deep Learning", "Papers with Code", "papers"),
+    ("Datasets", "UCI ML Repository", "fuente"),
+    ("Datasets", "Kaggle", "fuente"),
+    ("Datasets", "Hugging Face", "fuente"),
+    ("Visión Artificial", "Roboflow", "herramienta"),
+    ("Visión Artificial", "COCO", "dataset"),
+    ("Visión Artificial", "ImageNet", "dataset"),
+    ("NLP", "SQuAD", "dataset"),
 
-    ("Responsible AI", "Robustez"),
-    ("Responsible AI", "Seguridad IA"),
-    ("Responsible AI", "Gobernanza de IA"),
-    ("Seguridad IA", "Guardrails"),
-    ("Gobernanza de IA", "Evaluación LLM"),
+    # robótica
+    ("Robótica", "ROS", "framework"),
+    ("Robótica", "SLAM", "aplicación"),
+    ("Robótica", "Control de Movimiento", "aplicación"),
+    ("Robótica", "Servos", "actuación"),
+    ("Robótica", "Raspberry Pi", "hardware"),
+    ("Robótica", "Sensores", "entrada"),
+    ("Robótica", "Actuadores", "salida"),
+    ("Robótica", "OpenCV", "visión"),
+    ("Robótica", "YOLO", "percepción"),
+    ("Aprendizaje por Refuerzo", "Robótica", "uso"),
 
-    ("Inteligencia Artificial", "Computación Cuántica"),
-    ("Computación Cuántica", "Qubits"),
-    ("Computación Cuántica", "Superposición"),
-    ("Computación Cuántica", "Entrelazamiento"),
-    ("Computación Cuántica", "Puertas Cuánticas"),
-    ("Computación Cuántica", "Circuitos Cuánticos"),
-    ("Computación Cuántica", "Medición Cuántica"),
-    ("Computación Cuántica", "Algoritmo de Grover"),
-    ("Computación Cuántica", "Algoritmo de Shor"),
-    ("Computación Cuántica", "QAOA"),
-    ("Computación Cuántica", "VQE"),
-    ("Computación Cuántica", "Qiskit"),
-    ("Computación Cuántica", "Quantum Machine Learning"),
-    ("Qubits", "Superposición"),
-    ("Qubits", "Entrelazamiento"),
-    ("Puertas Cuánticas", "Circuitos Cuánticos"),
-    ("Circuitos Cuánticos", "Medición Cuántica"),
-    ("Qiskit", "Algoritmo de Grover"),
-    ("Qiskit", "Algoritmo de Shor"),
-    ("Qiskit", "QAOA"),
-    ("Qiskit", "VQE"),
-    ("Quantum Machine Learning", "Machine Learning"),
-    ("Quantum Machine Learning", "Computación Cuántica"),
+    # responsible / quantum
+    ("Responsible AI", "Guardrails", "herramienta"),
+    ("Responsible AI", "Seguridad IA", "riesgo"),
+    ("Computación Cuántica", "Qiskit", "sdk"),
+    ("Computación Cuántica", "Quantum Machine Learning", "intersección"),
 ]
 
 # =========================================================
-# Sidebar de recursos
+# Filtros derivados
 # =========================================================
-st.sidebar.markdown("---")
-st.sidebar.subheader("Recurso por concepto")
+all_kinds = sorted({attrs["kind"] for attrs in nodes.values()})
+all_domains = sorted({attrs["domain"] for attrs in nodes.values()})
 
-selected_topic = st.sidebar.selectbox(
-    "Selecciona un concepto",
-    sorted(nodes.keys())
+default_focus_from_query = st.query_params.get("focus", "Todo")
+if isinstance(default_focus_from_query, list):
+    default_focus_from_query = default_focus_from_query[0]
+
+focus_options = ["Todo"] + sorted(nodes.keys())
+if default_focus_from_query not in focus_options:
+    default_focus_from_query = "Todo"
+
+focus_node = st.sidebar.selectbox(
+    "Mostrar submapa de:",
+    focus_options,
+    index=focus_options.index(default_focus_from_query)
 )
 
-selected_url = nodes[selected_topic].get("url", "")
-selected_desc = nodes[selected_topic].get("title", "")
-selected_year = nodes[selected_topic].get("year", "Sin año")
-
-st.sidebar.markdown(f"**Año:** {selected_year}")
-st.sidebar.markdown(f"**Descripción:** {selected_desc}")
-if selected_url:
-    st.sidebar.markdown(f"[Abrir recurso de {selected_topic}]({selected_url})")
-else:
-    st.sidebar.info("No hay link definido para este concepto.")
-
-# =========================================================
-# Construcción del grafo
-# =========================================================
-G = nx.Graph()
-
-for node_name, attrs in nodes.items():
-    descripcion = attrs["title"]
-    url = attrs.get("url", "")
-    year = attrs.get("year", "")
-
-    if year:
-        descripcion = f"<b>Año:</b> {year}<br><br>{descripcion}"
-
-    if url:
-        descripcion += f"<br><br><b>Más información:</b><br><a href='{url}' target='_blank'>{url}</a>"
-
-    G.add_node(
-        node_name,
-        color=attrs["color"],
-        size=attrs["size"],
-        title=descripcion,
-        url=url,
-        year=year,
-    )
-
-if show_edges:
-    for source, target in edges:
-        G.add_edge(source, target)
-
-# =========================================================
-# Crear red PyVis
-# =========================================================
-net = Network(
-    height="820px",
-    width="100%",
-    bgcolor="#111111",
-    font_color="white",
-    notebook=False,
+selected_kinds = st.sidebar.multiselect(
+    "Tipos a mostrar",
+    all_kinds,
+    default=all_kinds
 )
 
-net.from_nx(G)
-
-for node in net.nodes:
-    base_label = node["id"]
-    year = G.nodes[node["id"]].get("year", "")
-
-    if show_year_in_label and year:
-        node["label"] = f"{base_label} ({year})"
-    else:
-        node["label"] = base_label
-
-    node["font"] = {"size": 18, "color": "white"}
-    node["title"] = G.nodes[node["id"]].get("title", "")
-    node["url"] = G.nodes[node["id"]].get("url", "")
-    node["target"] = "_blank"
+selected_domains = st.sidebar.multiselect(
+    "Dominios a mostrar",
+    all_domains,
+    default=all_domains
+)
 
 # =========================================================
-# Aplicar tipo de mapa
+# Helpers
 # =========================================================
-if tipo_mapa == "Libre":
-    if physics_enabled:
-        net.repulsion(
-            node_distance=node_distance,
-            central_gravity=central_gravity,
-            spring_length=spring_length,
-            spring_strength=0.05,
-            damping=0.09,
+def safe_color(domain: str) -> str:
+    return DOMAIN_COLORS.get(domain, DOMAIN_COLORS["General"])
+
+
+def build_tooltip(node_name: str, attrs: dict) -> str:
+    kind = attrs.get("kind", "concepto")
+    domain = attrs.get("domain", "General")
+
+    html = f"""
+    <div style="font-size:14px; line-height:1.45;">
+        <b>{node_name}</b><br>
+        <b>Tipo:</b> {kind}<br>
+        <b>Dominio:</b> {domain}<br>
+        <b>Año:</b> {attrs.get("year", "N/A")}<br><br>
+        {attrs.get("title", "")}
+    """
+
+    if attrs.get("examples"):
+        html += "<br><br><b>Ejemplos de uso:</b><br>" + "".join(
+            f"• {x}<br>" for x in attrs["examples"]
         )
 
-    net.set_options(f"""
-    var options = {{
-      "nodes": {{
-        "shape": "dot",
-        "scaling": {{
-          "min": 10,
-          "max": 40
-        }},
-        "font": {{
-          "size": 16,
-          "strokeWidth": 0
-        }}
-      }},
-      "edges": {{
-        "smooth": {{
-          "enabled": true,
-          "type": "dynamic"
-        }},
-        "color": {{
-          "color": "#999999",
-          "highlight": "#ffffff",
-          "hover": "#ffffff"
-        }},
-        "width": 1.2
-      }},
-      "physics": {{
-        "enabled": {str(physics_enabled).lower()},
-        "repulsion": {{
-          "nodeDistance": {node_distance},
-          "centralGravity": {central_gravity},
-          "springLength": {spring_length},
-          "springConstant": 0.05,
-          "damping": 0.09
-        }},
-        "solver": "repulsion"
-      }},
-      "interaction": {{
-        "hover": true,
-        "tooltipDelay": 150,
-        "navigationButtons": true,
-        "keyboard": true
-      }}
-    }}
-    """)
-else:
-    direction = "LR" if tipo_mapa == "Jerárquico LR" else "UD"
+    if attrs.get("tools"):
+        html += "<br><br><b>Herramientas relacionadas:</b><br>" + ", ".join(attrs["tools"])
 
-    net.set_options(f"""
-    var options = {{
-      "layout": {{
-        "hierarchical": {{
-          "enabled": true,
-          "direction": "{direction}",
-          "sortMethod": "directed",
-          "levelSeparation": 180,
-          "nodeSpacing": 160,
-          "treeSpacing": 220
+    if attrs.get("python_libraries"):
+        html += "<br><br><b>Librerías Python:</b><br>" + ", ".join(attrs["python_libraries"])
+
+    if attrs.get("functions"):
+        html += "<br><br><b>Funciones clave:</b><br>" + ", ".join(attrs["functions"])
+
+    if attrs.get("tags"):
+        html += "<br><br><b>Tags:</b><br>" + ", ".join(attrs["tags"])
+
+    if attrs.get("url"):
+        html += f"<br><br><b>Recurso:</b> <a href='{attrs['url']}' target='_blank'>{attrs['url']}</a>"
+
+    if attrs.get("github"):
+        html += f"<br><br><b>Git:</b> <a href='{attrs['github']}' target='_blank'>{attrs['github']}</a>"
+
+    html += "</div>"
+    return html
+
+
+def add_function_nodes(base_nodes: dict, base_edges: list, max_functions: int = 5):
+    new_nodes = dict(base_nodes)
+    new_edges = list(base_edges)
+
+    for lib_name, attrs in list(base_nodes.items()):
+        if attrs.get("kind") == "libreria" and attrs.get("functions"):
+            for fn in attrs["functions"][:max_functions]:
+                fn_node_name = f"{lib_name}.{fn}"
+                if fn_node_name not in new_nodes:
+                    new_nodes[fn_node_name] = {
+                        "kind": "funcion",
+                        "domain": attrs.get("domain", "Python"),
+                        "size": 10,
+                        "year": attrs.get("year", ""),
+                        "title": f"Función o componente clave de {lib_name}: {fn}",
+                        "examples": [f"Uso de {fn} en {lib_name}"],
+                        "url": attrs.get("url", ""),
+                    }
+                    new_edges.append((lib_name, fn_node_name, "función"))
+    return new_nodes, new_edges
+
+
+def build_graph(graph_nodes: dict, graph_edges: list) -> nx.Graph:
+    G = nx.Graph()
+
+    for node_name, attrs in graph_nodes.items():
+        style = KIND_STYLES.get(attrs.get("kind", "concepto"), KIND_STYLES["concepto"])
+        label = node_name
+        if show_year_in_label and attrs.get("year"):
+            label = f"{node_name}\\n({attrs['year']})"
+
+        size = max(8, attrs.get("size", 14) + style["size_boost"])
+
+        G.add_node(
+            node_name,
+            label=label,
+            kind=attrs.get("kind", "concepto"),
+            domain=attrs.get("domain", "General"),
+            color=safe_color(attrs.get("domain", "General")),
+            size=size,
+            shape=style["shape"],
+            title=build_tooltip(node_name, attrs),
+            url=attrs.get("url", ""),
+            year=attrs.get("year", ""),
+            raw_title=attrs.get("title", ""),
+        )
+
+    for edge in graph_edges:
+        source, target, relation = edge
+        if source in G.nodes and target in G.nodes:
+            G.add_edge(source, target, label=relation, title=relation)
+
+    return G
+
+
+def get_subgraph_nodes(graph: nx.Graph, start_node: str, max_depth: int = 1):
+    if start_node not in graph:
+        return set()
+
+    visited = {start_node}
+    queue = deque([(start_node, 0)])
+
+    while queue:
+        current, depth_now = queue.popleft()
+        if depth_now >= max_depth:
+            continue
+        for neigh in graph.neighbors(current):
+            if neigh not in visited:
+                visited.add(neigh)
+                queue.append((neigh, depth_now + 1))
+
+    return visited
+
+
+def filter_graph(G: nx.Graph, focus: str, kinds: list, domains: list, depth_value: int) -> nx.Graph:
+    if focus != "Todo" and focus in G.nodes:
+        visible = get_subgraph_nodes(G, focus, max_depth=depth_value)
+    else:
+        visible = set(G.nodes())
+
+    visible = {
+        n for n in visible
+        if G.nodes[n].get("kind") in kinds and G.nodes[n].get("domain") in domains
+    }
+
+    return G.subgraph(visible).copy()
+
+
+def create_timeline_df(graph_nodes: dict) -> pd.DataFrame:
+    rows = []
+    for name, attrs in graph_nodes.items():
+        if attrs.get("year"):
+            rows.append({
+                "Concepto": name,
+                "Año": attrs.get("year"),
+                "Tipo": attrs.get("kind", "concepto"),
+                "Dominio": attrs.get("domain", "General"),
+                "Descripción": attrs.get("title", "")
+            })
+    df = pd.DataFrame(rows)
+    if not df.empty and sort_by_epoch:
+        df = df.sort_values(by=["Año", "Dominio", "Concepto"]).reset_index(drop=True)
+    return df
+
+
+def inject_click_behavior(html_path: str):
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+
+    custom_js = """
+<script type="text/javascript">
+(function() {
+    function updateFocusParam(nodeId) {
+        try {
+            const url = new URL(window.parent.location.href);
+            url.searchParams.set("focus", nodeId);
+            window.parent.location.href = url.toString();
+        } catch (e) {
+            console.log("No se pudo actualizar focus:", e);
+        }
+    }
+
+    function openNodeUrl(nodeId) {
+        try {
+            const node = nodes.get(nodeId);
+            if (node && node.url) {
+                window.open(node.url, "_blank");
+            }
+        } catch (e) {
+            console.log("No se pudo abrir URL:", e);
+        }
+    }
+
+    network.on("click", function(params) {
+        if (params.nodes.length > 0) {
+            const nodeId = params.nodes[0];
+            updateFocusParam(nodeId);
+        }
+    });
+
+    network.on("doubleClick", function(params) {
+        if (params.nodes.length > 0) {
+            const nodeId = params.nodes[0];
+            openNodeUrl(nodeId);
+        }
+    });
+})();
+</script>
+</body>
+"""
+
+    html = html.replace("</body>", custom_js)
+
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html)
+
+
+def render_graph(G: nx.Graph):
+    net = Network(height="760px", width="100%", bgcolor="#111111", font_color="white", notebook=False)
+    net.from_nx(G)
+
+    if tipo_mapa == "Jerárquico LR":
+        net.set_options(f"""
+        var options = {{
+          "layout": {{
+            "hierarchical": {{
+              "enabled": true,
+              "direction": "LR",
+              "sortMethod": "directed"
+            }}
+          }},
+          "physics": {{
+            "enabled": {str(physics_enabled).lower()},
+            "hierarchicalRepulsion": {{
+              "nodeDistance": {node_distance}
+            }},
+            "solver": "hierarchicalRepulsion"
+          }},
+          "edges": {{
+            "smooth": true,
+            "color": {{"inherit": true}}
+          }}
         }}
-      }},
-      "physics": {{
-        "enabled": false
-      }},
-      "nodes": {{
-        "shape": "dot",
-        "scaling": {{
-          "min": 10,
-          "max": 40
-        }},
-        "font": {{
-          "size": 16,
-          "strokeWidth": 0
+        """)
+    elif tipo_mapa == "Jerárquico UD":
+        net.set_options(f"""
+        var options = {{
+          "layout": {{
+            "hierarchical": {{
+              "enabled": true,
+              "direction": "UD",
+              "sortMethod": "directed"
+            }}
+          }},
+          "physics": {{
+            "enabled": {str(physics_enabled).lower()},
+            "hierarchicalRepulsion": {{
+              "nodeDistance": {node_distance}
+            }},
+            "solver": "hierarchicalRepulsion"
+          }},
+          "edges": {{
+            "smooth": true,
+            "color": {{"inherit": true}}
+          }}
         }}
-      }},
-      "edges": {{
-        "smooth": {{
-          "enabled": true,
-          "type": "cubicBezier"
-        }},
-        "color": {{
-          "color": "#999999",
-          "highlight": "#ffffff",
-          "hover": "#ffffff"
-        }},
-        "width": 1.2
-      }},
-      "interaction": {{
-        "hover": true,
-        "tooltipDelay": 150,
-        "navigationButtons": true,
-        "keyboard": true
-      }}
-    }}
-    """)
+        """)
+    else:
+        net.set_options(f"""
+        var options = {{
+          "physics": {{
+            "enabled": {str(physics_enabled).lower()},
+            "barnesHut": {{
+              "gravitationalConstant": -2500,
+              "centralGravity": {central_gravity},
+              "springLength": {spring_length},
+              "springConstant": 0.04,
+              "damping": 0.09
+            }},
+            "solver": "barnesHut"
+          }},
+          "nodes": {{
+            "borderWidth": 2,
+            "shadow": true
+          }},
+          "edges": {{
+            "smooth": true,
+            "color": {{"inherit": true}}
+          }},
+          "interaction": {{
+            "hover": true,
+            "navigationButtons": true,
+            "keyboard": true
+          }}
+        }}
+        """)
+
+    if not show_edges:
+        for edge in net.edges:
+            edge["hidden"] = True
+
+    tmp_dir = tempfile.mkdtemp()
+    html_path = os.path.join(tmp_dir, "mental_map.html")
+    net.save_graph(html_path)
+    inject_click_behavior(html_path)
+
+    with open(html_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+
+    components.html(html_content, height=780, scrolling=True)
+
 
 # =========================================================
-# Guardar HTML temporal y renderizar
+# Expandir funciones Python opcionalmente
 # =========================================================
-with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp_file:
-    net.save_graph(tmp_file.name)
-    tmp_file_path = tmp_file.name
+graph_nodes = dict(nodes)
+graph_edges = list(edges)
 
-with open(tmp_file_path, "r", encoding="utf-8") as f:
-    html_content = f.read()
-
-components.html(html_content, height=840, scrolling=True)
-
-try:
-    os.unlink(tmp_file_path)
-except Exception:
-    pass
+if show_python_functions:
+    graph_nodes, graph_edges = add_function_nodes(
+        graph_nodes,
+        graph_edges,
+        max_functions=max_function_nodes_per_lib
+    )
 
 # =========================================================
-# Timeline paralela
+# Construcción y filtros del grafo
+# =========================================================
+G_full = build_graph(graph_nodes, graph_edges)
+G_filtered = filter_graph(G_full, focus_node, selected_kinds, selected_domains, depth)
+
+# =========================================================
+# Layout principal
+# =========================================================
+left_col, right_col = st.columns([3.4, 1.2], gap="large")
+
+with left_col:
+    st.subheader("Mapa visual")
+    st.caption(
+        f"Nodos mostrados: {len(G_filtered.nodes)} | "
+        f"Relaciones: {len(G_filtered.edges)} | "
+        f"Foco actual: {focus_node}"
+    )
+    render_graph(G_filtered)
+
+with right_col:
+    st.subheader("Exploración rápida")
+
+    st.markdown("**Autores / enlaces**")
+    st.markdown(f"- [LinkedIn]({LINKEDIN_URL})")
+    st.markdown(f"- [GitHub]({GITHUB_URL})")
+
+    st.markdown("---")
+    st.markdown("**Leyenda de tipos**")
+    for kind in all_kinds + (["funcion"] if show_python_functions else []):
+        if kind in KIND_STYLES:
+            st.markdown(f"- **{kind}** → {KIND_STYLES[kind]['shape']}")
+
+    st.markdown("---")
+    st.markdown("**Foco actual**")
+    if focus_node != "Todo" and focus_node in graph_nodes:
+        attrs = graph_nodes[focus_node]
+        st.markdown(f"### {focus_node}")
+        st.write(attrs.get("title", ""))
+
+        if attrs.get("examples"):
+            st.markdown("**Ejemplos de uso**")
+            for ex in attrs["examples"]:
+                st.write(f"- {ex}")
+
+        if attrs.get("tools"):
+            st.markdown("**Herramientas relacionadas**")
+            st.write(", ".join(attrs["tools"]))
+
+        if attrs.get("python_libraries"):
+            st.markdown("**Librerías Python**")
+            st.write(", ".join(attrs["python_libraries"]))
+
+        if attrs.get("functions"):
+            st.markdown("**Funciones clave**")
+            st.write(", ".join(attrs["functions"]))
+
+        if attrs.get("url"):
+            st.markdown(f"[Abrir recurso externo]({attrs['url']})")
+    else:
+        st.info("Selecciona un nodo con click o usa el filtro lateral para ver su detalle.")
+
+    st.markdown("---")
+    st.markdown("**Submapas sugeridos**")
+    suggested = [
+        "Cloud Computing",
+        "Python",
+        "Robótica",
+        "NLP",
+        "Visión Artificial",
+        "Machine Learning",
+        "Generative AI",
+        "Computación Cuántica",
+    ]
+    for s in suggested:
+        st.markdown(f"- `{s}`")
+
+# =========================================================
+# Línea de tiempo
 # =========================================================
 if show_timeline:
     st.markdown("---")
-    st.subheader("Evolución histórica de tecnologías")
+    st.subheader("Línea de tiempo")
 
-    timeline_rows = []
-    for nombre, attrs in nodes.items():
-        year = attrs.get("year", None)
-        if year is not None:
-            timeline_rows.append({
-                "Concepto": nombre,
-                "Año": year,
-                "Descripción": attrs.get("title", ""),
-                "Recurso": attrs.get("url", ""),
-            })
+    if focus_node != "Todo":
+        visible_names = set(G_filtered.nodes)
+        timeline_source_nodes = {k: v for k, v in graph_nodes.items() if k in visible_names}
+    else:
+        timeline_source_nodes = graph_nodes
 
-    if timeline_rows:
-        df_timeline = pd.DataFrame(timeline_rows)
+    timeline_df = create_timeline_df(timeline_source_nodes)
 
-        if sort_by_epoch:
-            df_timeline = df_timeline.sort_values(["Año", "Concepto"], ascending=[True, True])
-        else:
-            df_timeline = df_timeline.sort_values(["Concepto"], ascending=[True])
-
-        st.markdown("### Tabla interactiva")
-        st.dataframe(
-            df_timeline,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "Concepto": st.column_config.TextColumn("Concepto"),
-                "Año": st.column_config.NumberColumn("Año", format="%d"),
-                "Descripción": st.column_config.TextColumn("Descripción", width="large"),
-                "Recurso": st.column_config.LinkColumn("Recurso"),
-            }
+    if timeline_df.empty:
+        st.warning("No hay datos suficientes para mostrar la línea de tiempo.")
+    else:
+        chart = (
+            alt.Chart(timeline_df)
+            .mark_circle(size=120)
+            .encode(
+                x=alt.X("Año:Q", title="Año"),
+                y=alt.Y("Dominio:N", title="Dominio", sort="-x"),
+                tooltip=["Concepto", "Tipo", "Dominio", "Año", "Descripción"],
+                color=alt.Color("Dominio:N", legend=None),
+            )
+            .properties(height=420)
+            .interactive()
         )
-
-        st.markdown("### Línea de tiempo visual")
-        chart = alt.Chart(df_timeline).mark_circle(size=130).encode(
-            x=alt.X("Año:Q", title="Año"),
-            y=alt.Y(
-                "Concepto:N",
-                sort=alt.SortField(field="Año", order="ascending") if sort_by_epoch else None,
-                title="Concepto"
-            ),
-            tooltip=["Concepto", "Año", "Descripción", "Recurso"]
-        ).interactive()
-
         st.altair_chart(chart, use_container_width=True)
 
-# =========================================================
-# Resumen
-# =========================================================
-st.subheader("Resumen de áreas")
-st.markdown("""
-- **IA**: disciplina general que incluye múltiples técnicas para crear sistemas inteligentes.  
-- **Machine Learning**: aprende a partir de datos.  
-- **Deep Learning**: usa redes neuronales profundas para tareas complejas.  
-- **NLP**: trabaja con texto, lenguaje y modelos de lenguaje.  
-- **Visión Artificial**: analiza imágenes y video.  
-- **MLOps**: lleva modelos a producción y los mantiene sanos.  
-- **Data Engineering**: prepara y mueve los datos que alimentan los modelos.  
-- **Responsible AI**: busca una IA más segura, ética y confiable.  
-- **Cloud Computing**: permite desplegar y escalar sistemas modernos.  
-- **Desarrollo de Software**: da la base arquitectónica y operativa para construir productos reales.  
-- **Computación Cuántica**: explora nuevos paradigmas de cómputo y su cruce con ML.
-""")
+        with st.expander("Ver tabla cronológica"):
+            st.dataframe(timeline_df, use_container_width=True)
 
 # =========================================================
-# Autoría
+# Tabla resumen
 # =========================================================
 st.markdown("---")
-st.caption(
-    f"Construido por [Alexis Torres]({LINKEDIN_URL}) · [GitHub]({GITHUB_URL})"
-)
+st.subheader("Resumen tabular del submapa")
+
+summary_rows = []
+for node_name in G_filtered.nodes:
+    node_data = G_filtered.nodes[node_name]
+    summary_rows.append({
+        "Nombre": node_name,
+        "Tipo": node_data.get("kind", ""),
+        "Dominio": node_data.get("domain", ""),
+        "Año": node_data.get("year", ""),
+        "Descripción": node_data.get("raw_title", ""),
+        "URL": node_data.get("url", ""),
+    })
+
+summary_df = pd.DataFrame(summary_rows)
+if not summary_df.empty:
+    if sort_by_epoch and "Año" in summary_df.columns:
+        try:
+            summary_df["Año_num"] = pd.to_numeric(summary_df["Año"], errors="coerce")
+            summary_df = summary_df.sort_values(
+                by=["Año_num", "Dominio", "Nombre"],
+                ascending=[True, True, True]
+            ).drop(columns=["Año_num"])
+        except Exception:
+            pass
+    st.dataframe(summary_df, use_container_width=True)
+else:
+    st.warning("No hay nodos para mostrar con la combinación actual de filtros.")
