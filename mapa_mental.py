@@ -2,6 +2,7 @@
 import os
 import json
 import tempfile
+import html
 from collections import deque, defaultdict
 
 import altair as alt
@@ -14,8 +15,8 @@ from pyvis.network import Network
 st.set_page_config(page_title="Mapa conceptual interactivo", layout="wide")
 st.title("Mapa conceptual interactivo de tecnología")
 st.write(
-    "Haz click en un nodo para enfocarte en su rama. "
-    "Haz doble click para abrir su recurso externo si existe."
+    "Haz click en un nodo para ver su detalle ampliado dentro del panel inferior del mapa. "
+    "Usa los filtros de la derecha para simplificar la vista."
 )
 
 LINKEDIN_URL = "https://www.linkedin.com/in/alexis-torres87/"
@@ -78,9 +79,7 @@ sort_by_epoch = st.sidebar.checkbox("Ordenar conceptos por época", True)
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("Exploración")
-show_functions = st.sidebar.checkbox("Mostrar funciones clave como nodos", False)
-max_function_nodes_per_lib = st.sidebar.slider("Máx. funciones por librería", 2, 12, 5, 1)
-depth = st.sidebar.slider("Profundidad del submapa", 0, 4, 2, 1)
+st.sidebar.caption("El detalle de cada nodo aparece dentro del panel inferior del mapa al hacer click.")
 
 # =========================================================
 # Helpers para datos
@@ -126,7 +125,49 @@ def add_typed_item(parent_container, item_name, kind, domain, year, title, url=N
     add_node(item_name, make_node(kind, domain, year, title, size=12, url=url, functions=functions))
     add_edge(parent_container, item_name, "contiene")
 
-def add_taxonomy_branch(domain_root, subarea, concept_items=None, tool_items=None, lib_items=None, resource_items=None, dataset_items=None, year=None, description=None):
+
+def normalize_item(item, inferred_kind, subarea):
+    if isinstance(item, dict):
+        item_name = item["name"]
+        item_kind = item.get("kind", inferred_kind)
+        item_year = item.get("year")
+        item_title = item.get("title", f"{item_name} dentro de {subarea}.")
+        item_url = item.get("url")
+        item_functions = item.get("functions", [])
+    else:
+        item_name = item
+        item_kind = inferred_kind
+        item_year = None
+        item_title = f"{item} dentro de {subarea}."
+        item_url = None
+        item_functions = []
+    return {
+        "name": item_name,
+        "kind": item_kind,
+        "year": item_year,
+        "title": item_title,
+        "url": item_url,
+        "functions": item_functions,
+    }
+
+def build_group_description(label, subarea, items):
+    first_line = f"Grupo {label} asociado a {subarea}."
+    if label.lower() == "librerías":
+        extra = "Incluye librerías y frameworks relevantes, con su propósito, funciones principales y enlaces de consulta."
+    elif label.lower() == "herramientas":
+        extra = "Incluye herramientas operativas o de uso práctico para trabajar esta subárea."
+    elif label.lower() == "recursos":
+        extra = "Incluye documentación, portales y material para profundizar."
+    elif label.lower() == "datasets":
+        extra = "Incluye datasets o fuentes de datos útiles para practicar, evaluar o entrenar."
+    elif label.lower() == "aplicaciones":
+        extra = "Incluye ejemplos de aplicación y uso real."
+    else:
+        extra = "Incluye elementos relacionados con esta subárea."
+    return first_line + " " + extra + f" Total: {len(items)} elemento(s)."
+
+
+def add_taxonomy_branch(domain_root, subarea, concept_items=None, tool_items=None, lib_items=None, resource_items=None, dataset_items=None, app_items=None, year=None, description=None):
     add_node(subarea, {
         "kind": "subarea",
         "domain": domain_root,
@@ -143,50 +184,57 @@ def add_taxonomy_branch(domain_root, subarea, concept_items=None, tool_items=Non
         ("Librerías", lib_items or [], "libreria"),
         ("Recursos", resource_items or [], "recurso"),
         ("Datasets", dataset_items or [], "dataset"),
+        ("Aplicaciones", app_items or [], "aplicacion"),
     ]
 
     for label, items, inferred_kind in buckets:
         if not items:
             continue
-        container_name = f"{subarea} :: {label}"
-        add_node(
-            container_name,
-            make_container(
-                domain_root,
-                subarea,
-                label,
-                year=year,
-                title=f"Grupo {label} asociado a {subarea}."
-            )
-        )
-        add_edge(subarea, container_name, "agrupa")
 
-        for item in items:
-            if isinstance(item, dict):
-                item_name = item["name"]
-                item_kind = item.get("kind", inferred_kind)
-                item_year = item.get("year")
-                item_title = item.get("title", "")
-                item_url = item.get("url")
-                item_functions = item.get("functions", [])
-            else:
-                item_name = item
-                item_kind = inferred_kind
-                item_year = None
-                item_title = f"{item} dentro de {subarea}."
-                item_url = None
-                item_functions = []
+        normalized_items = [normalize_item(item, inferred_kind, subarea) for item in items]
 
-            add_typed_item(
+        if label == "Conceptos":
+            container_name = f"{subarea} :: {label}"
+            add_node(
                 container_name,
-                item_name,
-                item_kind,
-                domain_root,
-                item_year,
-                item_title,
-                url=item_url,
-                functions=item_functions,
+                make_container(
+                    domain_root,
+                    subarea,
+                    label,
+                    year=year,
+                    title=f"Grupo {label} asociado a {subarea}."
+                )
             )
+            add_edge(subarea, container_name, "agrupa")
+
+            for item in normalized_items:
+                add_typed_item(
+                    container_name,
+                    item["name"],
+                    item["kind"],
+                    domain_root,
+                    item["year"],
+                    item["title"],
+                    url=item["url"],
+                    functions=item["functions"],
+                )
+        else:
+            container_name = f"{subarea} :: {label}"
+            add_node(
+                container_name,
+                {
+                    "kind": "contenedor",
+                    "domain": domain_root,
+                    "size": 16,
+                    "year": year,
+                    "title": build_group_description(label, subarea, normalized_items),
+                    "items_detail": normalized_items,
+                    "group_parent": subarea,
+                    "label_type": label,
+                    "tags": [domain_root, subarea, label],
+                }
+            )
+            add_edge(subarea, container_name, "agrupa")
 
 # =========================================================
 # Nivel 0: dominios principales
@@ -223,78 +271,31 @@ add_node("Python", {
 })
 add_edge("Ingeniería de Software", "Python", "incluye")
 
-add_node("Python :: Librerías", make_container("Ingeniería de Software", "Python", "Librerías", year=1991, title="Librerías y frameworks relevantes del ecosistema Python."))
+add_node(
+    "Python :: Librerías",
+    {
+        "kind": "contenedor",
+        "domain": "Ingeniería de Software",
+        "size": 16,
+        "year": 1991,
+        "title": "Grupo de librerías y frameworks relevantes del ecosistema Python. Haz click para ver el detalle ampliado de cada una.",
+        "items_detail": [
+            {
+                "name": lib["name"],
+                "kind": "libreria",
+                "year": lib.get("year"),
+                "title": lib.get("title", ""),
+                "url": lib.get("url"),
+                "functions": lib.get("functions", []),
+            }
+            for lib in python_libraries
+        ],
+        "group_parent": "Python",
+        "label_type": "Librerías",
+        "tags": ["Ingeniería de Software", "Python", "Librerías"],
+    }
+)
 add_edge("Python", "Python :: Librerías", "agrupa")
-
-python_libraries = [
-    {
-        "name": "Streamlit",
-        "year": 2019,
-        "title": "Framework Python para construir apps interactivas de datos.",
-        "url": "https://streamlit.io/",
-        "functions": ["title", "write", "sidebar", "selectbox", "dataframe"],
-    },
-    {
-        "name": "NumPy",
-        "year": 2006,
-        "title": "Librería para computación numérica y arreglos multidimensionales.",
-        "url": "https://numpy.org/",
-        "functions": ["array", "mean", "dot", "linspace", "reshape"],
-    },
-    {
-        "name": "Matplotlib",
-        "year": 2003,
-        "title": "Librería de visualización para gráficos estáticos y analíticos.",
-        "url": "https://matplotlib.org/",
-        "functions": ["plot", "scatter", "hist", "imshow", "figure"],
-    },
-    {
-        "name": "pandas",
-        "year": 2008,
-        "title": "Librería para manipulación de datos tabulares y análisis.",
-        "url": "https://pandas.pydata.org/docs/",
-        "functions": ["DataFrame", "read_csv", "groupby", "merge", "pivot_table"],
-    },
-    {
-        "name": "spaCy",
-        "year": 2015,
-        "title": "Librería de NLP orientada a producción.",
-        "url": "https://spacy.io/",
-        "functions": ["load", "pipe", "displacy", "Matcher", "Doc"],
-    },
-    {
-        "name": "Transformers Library",
-        "year": 2019,
-        "title": "Librería de Hugging Face para modelos transformer.",
-        "url": "https://huggingface.co/docs/transformers/index",
-        "functions": ["pipeline", "AutoTokenizer", "AutoModel", "Trainer"],
-    },
-    {
-        "name": "FastAPI",
-        "year": 2018,
-        "title": "Framework de Python para construir APIs rápidas.",
-        "url": "https://fastapi.tiangolo.com/",
-        "functions": ["FastAPI", "get", "post", "Depends", "BackgroundTasks"],
-    },
-    {
-        "name": "OpenCV",
-        "year": 2000,
-        "title": "Librería popular para procesamiento de imágenes y visión por computador.",
-        "url": "https://opencv.org/",
-        "functions": ["imread", "resize", "cvtColor", "VideoCapture", "findContours"],
-    },
-]
-for lib in python_libraries:
-    add_typed_item(
-        "Python :: Librerías",
-        lib["name"],
-        "libreria",
-        "Ingeniería de Software",
-        lib["year"],
-        lib["title"],
-        url=lib["url"],
-        functions=lib.get("functions", []),
-    )
 
 # =========================================================
 # Inteligencia Artificial
@@ -1375,6 +1376,7 @@ for src, dst in cross_links:
 # =========================================================
 # Utilidades del grafo
 # =========================================================
+
 def enrich_title(name, attrs):
     lines = [f"{name}"]
     if attrs.get("kind"):
@@ -1386,6 +1388,29 @@ def enrich_title(name, attrs):
     if attrs.get("title"):
         lines.append("")
         lines.append(attrs["title"])
+
+    item_details = attrs.get("items_detail", [])
+    if item_details:
+        lines.append("")
+        lines.append("Detalle del grupo:")
+        for item in item_details:
+            lines.append("")
+            header = f"- {item.get('name', '')}"
+            meta_parts = []
+            if item.get("kind"):
+                meta_parts.append(item["kind"])
+            if item.get("year"):
+                meta_parts.append(str(item["year"]))
+            if meta_parts:
+                header += f" ({' | '.join(meta_parts)})"
+            lines.append(header)
+            if item.get("title"):
+                lines.append(f"  Uso: {item['title']}")
+            if item.get("functions"):
+                lines.append(f"  Funciones principales: {', '.join(item['functions'])}")
+            if item.get("url"):
+                lines.append(f"  Link: {item['url']}")
+
     if attrs.get("functions"):
         lines.append("")
         lines.append("Funciones clave:")
@@ -1395,57 +1420,76 @@ def enrich_title(name, attrs):
         lines.append(f"Recurso: {attrs['url']}")
     return "\n".join(lines)
 
-def add_function_nodes(graph_nodes, graph_edges, max_functions=5):
-    new_nodes = dict(graph_nodes)
-    new_edges = list(graph_edges)
+def build_detail_html(name, attrs):
+    def esc(v):
+        return html.escape(str(v))
 
-    for name, attrs in list(graph_nodes.items()):
-        if attrs.get("kind") not in {"libreria", "framework"}:
-            continue
-        functions = attrs.get("functions", [])[:max_functions]
-        for fn in functions:
-            fn_node = f"{name} :: {fn}"
-            if fn_node not in new_nodes:
-                new_nodes[fn_node] = {
-                    "kind": "funcion",
-                    "domain": attrs.get("domain", "General"),
-                    "size": 8,
-                    "year": attrs.get("year"),
-                    "title": f"Función clave de {name}: {fn}.",
-                }
-                new_edges.append((name, fn_node, "funcion"))
-    return new_nodes, new_edges
+    parts = [f"<h3 style='margin:0 0 8px 0'>{esc(name)}</h3>"]
+    meta = []
+    if attrs.get("kind"):
+        meta.append(f"<b>Tipo:</b> {esc(attrs['kind'])}")
+    if attrs.get("domain"):
+        meta.append(f"<b>Dominio:</b> {esc(attrs['domain'])}")
+    if attrs.get("year"):
+        meta.append(f"<b>Año:</b> {esc(attrs['year'])}")
+    if meta:
+        parts.append("<p style='margin:0 0 10px 0'>" + " | ".join(meta) + "</p>")
+    if attrs.get("title"):
+        parts.append(f"<p style='margin:0 0 12px 0'>{esc(attrs['title'])}</p>")
+
+    item_details = attrs.get("items_detail", [])
+    if item_details:
+        parts.append("<div style='margin-top:10px'>")
+        parts.append("<b>Detalle del grupo</b>")
+        parts.append("<ul style='margin-top:8px'>")
+        for item in item_details:
+            item_line = f"<li><b>{esc(item.get('name',''))}</b>"
+            meta_bits = []
+            if item.get("kind"):
+                meta_bits.append(esc(item["kind"]))
+            if item.get("year"):
+                meta_bits.append(esc(item["year"]))
+            if meta_bits:
+                item_line += f" <span style='color:#666'>({' | '.join(meta_bits)})</span>"
+            if item.get("title"):
+                item_line += f"<br><span>{esc(item['title'])}</span>"
+            if item.get("functions"):
+                item_line += f"<br><span><b>Funciones principales:</b> {esc(', '.join(item['functions']))}</span>"
+            if item.get("url"):
+                url = esc(item["url"])
+                item_line += f"<br><a href='{url}' target='_blank'>Ver más</a>"
+            item_line += "</li>"
+            parts.append(item_line)
+        parts.append("</ul></div>")
+
+    if attrs.get("examples"):
+        parts.append("<div style='margin-top:10px'><b>Ejemplos</b><ul>")
+        for ex in attrs["examples"]:
+            parts.append(f"<li>{esc(ex)}</li>")
+        parts.append("</ul></div>")
+
+    if attrs.get("functions"):
+        parts.append(f"<p><b>Funciones clave:</b> {esc(', '.join(attrs['functions']))}</p>")
+    if attrs.get("url"):
+        url = esc(attrs["url"])
+        parts.append(f"<p><a href='{url}' target='_blank'>Ir al recurso</a></p>")
+
+    return "".join(parts)
 
 def build_graph(graph_nodes, graph_edges):
     G = nx.Graph()
     for name, attrs in graph_nodes.items():
         attrs = dict(attrs)
         attrs["full_title"] = enrich_title(name, attrs)
+        attrs["detail_html"] = build_detail_html(name, attrs)
         G.add_node(name, **attrs)
     for src, dst, rel in graph_edges:
         if src in graph_nodes and dst in graph_nodes:
             G.add_edge(src, dst, relation=rel)
     return G
 
-def neighborhood_nodes(G, center, max_depth=1):
-    if center == "Todo" or center not in G:
-        return set(G.nodes)
-    visited = {center}
-    q = deque([(center, 0)])
-    while q:
-        current, d = q.popleft()
-        if d >= max_depth:
-            continue
-        for nb in G.neighbors(current):
-            if nb not in visited:
-                visited.add(nb)
-                q.append((nb, d + 1))
-    return visited
-
-def filter_graph(G, focus_node, selected_kinds, selected_domains, depth_value):
-    visible = neighborhood_nodes(G, focus_node, max_depth=depth_value)
-    H = G.subgraph(visible).copy()
-
+def filter_graph(G, selected_kinds, selected_domains):
+    H = G.copy()
     remove_nodes = []
     for n, attrs in H.nodes(data=True):
         if selected_kinds and attrs.get("kind") not in selected_kinds:
@@ -1455,13 +1499,6 @@ def filter_graph(G, focus_node, selected_kinds, selected_domains, depth_value):
             remove_nodes.append(n)
             continue
     H.remove_nodes_from(remove_nodes)
-
-    # Mantener el foco si los filtros lo dejan fuera
-    if focus_node != "Todo" and focus_node in G and focus_node not in H:
-        H.add_node(focus_node, **G.nodes[focus_node])
-        for nb in G.neighbors(focus_node):
-            if nb in H:
-                H.add_edge(focus_node, nb, **G.get_edge_data(focus_node, nb))
     return H
 
 def create_timeline_df(graph_nodes):
@@ -1484,42 +1521,51 @@ def create_timeline_df(graph_nodes):
         return df.sort_values(["Año", "Dominio", "Concepto"], ascending=[True, True, True]).reset_index(drop=True)
     return df.sort_values(["Dominio", "Año", "Concepto"]).reset_index(drop=True)
 
+
 def inject_click_behavior(html_path):
     with open(html_path, "r", encoding="utf-8") as f:
-        html = f.read()
+        html_content = f.read()
+
+    detail_panel = """
+<div id="selected-node-panel" style="margin-top:16px;padding:14px;border:1px solid #ddd;border-radius:12px;background:#fafafa;font-family:Arial, sans-serif;">
+  <div style="font-weight:700;margin-bottom:8px;">Detalle del nodo</div>
+  <div id="selected-node-content" style="color:#333;">Haz click sobre un nodo para ver aquí su descripción ampliada, usos, funciones principales y enlaces.</div>
+</div>
+"""
 
     js = """
 <script type="text/javascript">
 function waitForNetwork() {
-  if (typeof network === "undefined") {
+  if (typeof network === "undefined" || typeof nodes === "undefined") {
     setTimeout(waitForNetwork, 500);
     return;
   }
 
-  network.on("doubleClick", function(params) {
-    if (!params.nodes || params.nodes.length === 0) return;
-    const nodeId = params.nodes[0];
-    const node = nodes.get(nodeId);
-    if (node && node.url) {
-      window.open(node.url, "_blank");
+  function setPanel(html) {
+    const panel = document.getElementById("selected-node-content");
+    if (panel) {
+      panel.innerHTML = html;
     }
-  });
+  }
 
   network.on("click", function(params) {
     if (!params.nodes || params.nodes.length === 0) return;
     const nodeId = params.nodes[0];
-    const current = new URL(window.location.href);
-    current.searchParams.set("focus", nodeId);
-    window.location.href = current.toString();
+    const node = nodes.get(nodeId);
+    if (node && node.detail_html) {
+      setPanel(node.detail_html);
+    } else if (node && node.title) {
+      setPanel("<pre style='white-space:pre-wrap;font-family:Arial,sans-serif;'>" + node.title + "</pre>");
+    }
   });
 }
 waitForNetwork();
 </script>
 """
-    if "</body>" in html:
-        html = html.replace("</body>", js + "\n</body>")
+    if "</body>" in html_content:
+        html_content = html_content.replace("</body>", detail_panel + js + "\n</body>")
     with open(html_path, "w", encoding="utf-8") as f:
-        f.write(html)
+        f.write(html_content)
 
 def render_graph(G):
     net = Network(height="780px", width="100%", bgcolor="#ffffff", font_color="#111111")
@@ -1542,6 +1588,7 @@ def render_graph(G):
             name,
             label=label,
             title=attrs.get("full_title", name),
+            detail_html=attrs.get("detail_html", ""),
             color=base_color,
             shape=style.get("shape", "dot"),
             size=size,
@@ -1582,7 +1629,8 @@ def render_graph(G):
         "interaction": {
             "hover": True,
             "navigationButtons": True,
-            "keyboard": True
+            "keyboard": True,
+            "tooltipDelay": 120
         }
     }
     net.set_options(json.dumps(options))
@@ -1599,32 +1647,20 @@ def render_graph(G):
     with open(html_path, "r", encoding="utf-8") as f:
         html_content = f.read()
 
-    components.html(html_content, height=780, scrolling=True)
+    components.html(html_content, height=980, scrolling=True)
+
 
 # =========================================================
-# Expandir funciones de librerías opcionalmente
+# Construcción y filtros del grafo
 # =========================================================
 graph_nodes = dict(nodes)
 graph_edges = list(edges)
-if show_functions:
-    graph_nodes, graph_edges = add_function_nodes(graph_nodes, graph_edges, max_functions=max_function_nodes_per_lib)
 
 G_full = build_graph(graph_nodes, graph_edges)
 
-# =========================================================
-# Filtros
-# =========================================================
 all_domains = sorted({attrs.get("domain", "General") for attrs in graph_nodes.values()})
 all_kinds = sorted({attrs.get("kind", "concepto") for attrs in graph_nodes.values()})
 legend_kinds = [k for k in all_kinds if k != "principal"]
-
-params = st.query_params
-focus_from_url = params.get("focus", "Todo")
-default_focus = focus_from_url if isinstance(focus_from_url, str) else "Todo"
-
-focus_options = ["Todo"] + sorted(G_full.nodes())
-focus_index = focus_options.index(default_focus) if default_focus in focus_options else 0
-focus_node = st.sidebar.selectbox("Nodo foco", focus_options, index=focus_index)
 
 selected_domains = st.sidebar.multiselect(
     "Filtrar por dominio",
@@ -1634,10 +1670,10 @@ selected_domains = st.sidebar.multiselect(
 selected_kinds = st.sidebar.multiselect(
     "Filtrar por tipo",
     all_kinds,
-    default=[],
+    default=["principal", "subarea", "concepto"] if set(["principal", "subarea", "concepto"]).issubset(set(all_kinds)) else [],
 )
 
-G_filtered = filter_graph(G_full, focus_node, selected_kinds, selected_domains, depth)
+G_filtered = filter_graph(G_full, selected_kinds, selected_domains)
 
 # =========================================================
 # Layout principal
@@ -1648,8 +1684,7 @@ with left_col:
     st.subheader("Mapa visual")
     st.caption(
         f"Nodos mostrados: {len(G_filtered.nodes)} | "
-        f"Relaciones: {len(G_filtered.edges)} | "
-        f"Foco actual: {focus_node}"
+        f"Relaciones: {len(G_filtered.edges)}"
     )
     render_graph(G_filtered)
 
@@ -1662,7 +1697,7 @@ with right_col:
 
     st.markdown("---")
     st.markdown("**Leyenda de tipos**")
-    for kind in legend_kinds + (["funcion"] if show_functions else []):
+    for kind in legend_kinds:
         if kind in KIND_STYLES:
             st.markdown(f"- **{kind}** → {KIND_STYLES[kind]['shape']}")
 
@@ -1672,29 +1707,7 @@ with right_col:
         st.markdown(f"- `{name}`")
 
     st.markdown("---")
-    st.markdown("**Foco actual**")
-    if focus_node != "Todo" and focus_node in graph_nodes:
-        attrs = graph_nodes[focus_node]
-        st.markdown(f"### {focus_node}")
-        st.write(attrs.get("title", ""))
-
-        if attrs.get("examples"):
-            st.markdown("**Ejemplos de uso**")
-            for ex in attrs["examples"]:
-                st.write(f"- {ex}")
-
-        if attrs.get("tools"):
-            st.markdown("**Herramientas relacionadas**")
-            st.write(", ".join(attrs["tools"]))
-
-        if attrs.get("functions"):
-            st.markdown("**Funciones clave**")
-            st.write(", ".join(attrs["functions"]))
-
-        if attrs.get("url"):
-            st.markdown(f"[Abrir recurso externo]({attrs['url']})")
-    else:
-        st.info("Selecciona un nodo con click o usa el filtro lateral para ver su detalle.")
+    st.info("El detalle ampliado aparece debajo del mapa al hacer click en un nodo. El tooltip corto sigue disponible al pasar el mouse.")
 
     st.markdown("---")
     st.markdown("**Submapas sugeridos**")
@@ -1719,11 +1732,8 @@ if show_timeline:
     st.markdown("---")
     st.subheader("Línea de tiempo")
 
-    if focus_node != "Todo":
-        visible_names = set(G_filtered.nodes)
-        timeline_source_nodes = {k: v for k, v in graph_nodes.items() if k in visible_names}
-    else:
-        timeline_source_nodes = graph_nodes
+    visible_names = set(G_filtered.nodes)
+    timeline_source_nodes = {k: v for k, v in graph_nodes.items() if k in visible_names}
 
     timeline_df = create_timeline_df(timeline_source_nodes)
 
