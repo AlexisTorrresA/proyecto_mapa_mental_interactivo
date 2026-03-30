@@ -271,6 +271,65 @@ add_node("Python", {
 })
 add_edge("Ingeniería de Software", "Python", "incluye")
 
+python_libraries = [
+    {
+        "name": "Streamlit",
+        "year": 2019,
+        "title": "Framework Python para construir apps interactivas de datos y prototipos visuales.",
+        "url": "https://streamlit.io/",
+        "functions": ["title", "write", "sidebar", "selectbox", "dataframe"],
+    },
+    {
+        "name": "NumPy",
+        "year": 2006,
+        "title": "Librería para computación numérica, arreglos multidimensionales y álgebra lineal básica.",
+        "url": "https://numpy.org/",
+        "functions": ["array", "mean", "dot", "linspace", "reshape"],
+    },
+    {
+        "name": "Matplotlib",
+        "year": 2003,
+        "title": "Librería de visualización para gráficos estáticos, científicos y analíticos.",
+        "url": "https://matplotlib.org/",
+        "functions": ["plot", "scatter", "hist", "imshow", "figure"],
+    },
+    {
+        "name": "pandas",
+        "year": 2008,
+        "title": "Librería para manipulación, limpieza, transformación y análisis de datos tabulares.",
+        "url": "https://pandas.pydata.org/docs/",
+        "functions": ["DataFrame", "read_csv", "groupby", "merge", "pivot_table"],
+    },
+    {
+        "name": "spaCy",
+        "year": 2015,
+        "title": "Librería de NLP orientada a producción para procesamiento eficiente de texto.",
+        "url": "https://spacy.io/",
+        "functions": ["load", "pipe", "displacy", "Matcher", "Doc"],
+    },
+    {
+        "name": "Transformers Library",
+        "year": 2019,
+        "title": "Librería de Hugging Face para modelos transformer, NLP, visión e IA generativa.",
+        "url": "https://huggingface.co/docs/transformers/index",
+        "functions": ["pipeline", "AutoTokenizer", "AutoModel", "Trainer"],
+    },
+    {
+        "name": "FastAPI",
+        "year": 2018,
+        "title": "Framework de Python para construir APIs rápidas, tipadas y con documentación automática.",
+        "url": "https://fastapi.tiangolo.com/",
+        "functions": ["FastAPI", "get", "post", "Depends", "BackgroundTasks"],
+    },
+    {
+        "name": "OpenCV",
+        "year": 2000,
+        "title": "Librería popular para procesamiento de imágenes, visión por computador y video.",
+        "url": "https://opencv.org/",
+        "functions": ["imread", "resize", "cvtColor", "VideoCapture", "findContours"],
+    },
+]
+
 python_libraries_detail = []
 for lib in python_libraries:
     python_libraries_detail.append(
