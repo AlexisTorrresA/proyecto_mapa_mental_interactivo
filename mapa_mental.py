@@ -3,6 +3,10 @@ import os
 import json
 import tempfile
 import html
+import io
+import keyword
+import token
+import tokenize
 from collections import deque, defaultdict
 
 import altair as alt
@@ -2132,11 +2136,90 @@ def get_library_function_catalog(lib_name, attrs):
 
     return existing_catalog[:MIN_FUNCTIONS_PER_LIBRARY]
 
+def build_generic_python_example(lib_name, fn_name):
+    alias_map = {
+        "NumPy": "np",
+        "Matplotlib": "plt",
+        "pandas": "pd",
+        "PyTorch": "torch",
+        "TensorFlow": "tf",
+        "OpenCV": "cv2",
+        "Plotly": "px",
+        "Streamlit": "st",
+        "FastAPI": "app",
+        "Qiskit": "qc",
+        "PennyLane": "qml",
+    }
+
+    patterns = {
+        "read_csv": "import pandas as pd\ndf = pd.read_csv('data.csv')",
+        "DataFrame": "import pandas as pd\ndf = pd.DataFrame({'x': [1, 2], 'y': [3, 4]})",
+        "train_test_split": "from sklearn.model_selection import train_test_split\nX_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)",
+        "fit_transform": "X_scaled = scaler.fit_transform(X_train)",
+        "fit": "model.fit(X_train, y_train)",
+        "predict_proba": "proba = model.predict_proba(X_test)",
+        "predict": "y_pred = model.predict(X_test)",
+        "score": "score = model.score(X_test, y_test)",
+        "groupby": "summary = df.groupby('category').mean()",
+        "merge": "merged = left_df.merge(right_df, on='id')",
+        "pivot_table": "table = df.pivot_table(values='sales', index='region', columns='month')",
+        "torch.randn": "import torch\nx = torch.randn(32, 128, requires_grad=True)",
+        "torch.tensor": "import torch\nx = torch.tensor([[1.0, 2.0], [3.0, 4.0]])",
+        "torch.zeros": "import torch\nmask = torch.zeros((4, 4))",
+        "torch.ones": "import torch\nweights = torch.ones((2, 3))",
+        "nn.Linear": "import torch.nn as nn\nlayer = nn.Linear(128, 64)",
+        "optimizer.step": "optimizer.zero_grad()\nloss.backward()\noptimizer.step()",
+        "tf.constant": "import tensorflow as tf\nx = tf.constant([[1.0, 2.0], [3.0, 4.0]])",
+        "tf.Variable": "import tensorflow as tf\nw = tf.Variable(tf.random.normal([3, 3]))",
+        "model.compile": "model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])",
+        "model.fit": "history = model.fit(X_train, y_train, epochs=10, batch_size=32)",
+        "model.evaluate": "loss, acc = model.evaluate(X_test, y_test)",
+        "model.predict": "predictions = model.predict(X_new)",
+        "Sequential": "from keras import Sequential\nmodel = Sequential()",
+        "Dense": "from keras.layers import Dense\nlayer = Dense(64, activation='relu')",
+        "Dropout": "from keras.layers import Dropout\nregularizer = Dropout(0.3)",
+        "cv2.imread": "import cv2\nimage = cv2.imread('image.jpg')",
+        "cv2.cvtColor": "gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)",
+        "cv2.resize": "resized = cv2.resize(image, (224, 224))",
+        "cv2.VideoCapture": "cap = cv2.VideoCapture(0)",
+        "px.line": "import plotly.express as px\nfig = px.line(df, x='date', y='sales')",
+        "px.scatter": "import plotly.express as px\nfig = px.scatter(df, x='x', y='y', color='class')",
+        "plt.figure": "import matplotlib.pyplot as plt\nplt.figure(figsize=(8, 4))",
+        "plt.show": "plt.tight_layout()\nplt.show()",
+        "mlflow.start_run": "import mlflow\nwith mlflow.start_run():\n    mlflow.log_param('lr', 0.001)",
+        "mlflow.log_metric": "mlflow.log_metric('f1_score', 0.91)",
+        "create_engine": "from sqlalchemy import create_engine\nengine = create_engine('sqlite:///app.db')",
+        "MongoClient": "from pymongo import MongoClient\nclient = MongoClient('mongodb://localhost:27017')",
+        "QuantumCircuit": "from qiskit import QuantumCircuit\nqc = QuantumCircuit(2, 2)",
+        "qml.qnode": "import pennylane as qml\n@qml.qnode(dev)\ndef circuit(x):\n    return qml.expval(qml.Z(0))",
+    }
+
+    for key, code in patterns.items():
+        if key in fn_name:
+            return code
+
+    alias = alias_map.get(lib_name, lib_name.lower().replace(' ', '_'))
+    if '.' in fn_name:
+        call = fn_name
+    elif lib_name == 'FastAPI':
+        call = f"{alias}.{fn_name}" if alias != 'app' else f"app.{fn_name}"
+    else:
+        call = f"{alias}.{fn_name}"
+
+    import_line = ''
+    if lib_name == 'FastAPI':
+        import_line = 'from fastapi import FastAPI\napp = FastAPI()'
+    elif alias in {'np', 'pd', 'plt', 'torch', 'tf', 'cv2', 'px', 'st', 'qml'}:
+        module_map = {'np': 'numpy', 'pd': 'pandas', 'plt': 'matplotlib.pyplot', 'torch': 'torch', 'tf': 'tensorflow', 'cv2': 'cv2', 'px': 'plotly.express', 'st': 'streamlit', 'qml': 'pennylane'}
+        import_line = f"import {module_map[alias]} as {alias}"
+    return f"{import_line}\nresult = {call}(...)".strip()
+
+
 def build_generic_function_entry(lib_name, fn_name):
     return {
         "name": fn_name,
         "description": f"{fn_name} es una función o componente clave dentro de {lib_name}.",
-        "code": f"# Example with {lib_name}\n{fn_name}(...)",
+        "code": build_generic_python_example(lib_name, fn_name),
     }
 
 def add_library_function_nodes(graph_nodes, graph_edges):
@@ -2199,83 +2282,207 @@ def add_similarity_cluster_edges(G):
 # Utilidades del grafo
 # =========================================================
 
-def enrich_title(name, attrs):
-    display_name = translate_name(attrs.get("label", name))
-    lines = [f"{display_name}"]
-    if attrs.get("kind"):
-        lines.append(f"{tr('Tipo', 'Type')}: {translate_kind(attrs['kind'])}")
-    if attrs.get("domain"):
-        lines.append(f"{tr('Dominio', 'Domain')}: {translate_name(attrs['domain'])}")
-    if attrs.get("year"):
-        lines.append(f"{tr('Año', 'Year')}: {attrs['year']}")
+def render_python_code_html(code):
+    code = (code or '').strip('\n')
+    if not code:
+        return ''
+
+    styles = {
+        'keyword': '#c92c2c',
+        'name': '#1f6feb',
+        'string': '#0a7f5a',
+        'number': '#7c3aed',
+        'comment': '#6b7280',
+        'operator': '#111827',
+        'punct': '#475569',
+        'default': '#111827',
+    }
+
+    try:
+        lines = code.splitlines(keepends=True)
+        result = []
+        last_row, last_col = 1, 0
+
+        def append_plain(segment):
+            if not segment:
+                return
+            result.append(
+                html.escape(segment)
+                .replace(' ', '&nbsp;')
+                .replace('\t', '&nbsp;' * 4)
+                .replace('\n', '<br>')
+            )
+
+        def slice_text(sr, sc, er, ec):
+            if sr == er:
+                return lines[sr - 1][sc:ec]
+            chunks = [lines[sr - 1][sc:]]
+            for row in range(sr, er - 1):
+                chunks.append(lines[row])
+            chunks.append(lines[er - 1][:ec])
+            return ''.join(chunks)
+
+        for tok in tokenize.generate_tokens(io.StringIO(code).readline):
+            tok_type, tok_str, start_pos, end_pos, _ = tok
+            append_plain(slice_text(last_row, last_col, start_pos[0], start_pos[1]))
+
+            if tok_type == token.NAME and keyword.iskeyword(tok_str):
+                color = styles['keyword']
+            elif tok_type == token.NAME:
+                color = styles['name']
+            elif tok_type == token.STRING:
+                color = styles['string']
+            elif tok_type == token.NUMBER:
+                color = styles['number']
+            elif tok_type == tokenize.COMMENT:
+                color = styles['comment']
+            elif tok_type == token.OP:
+                color = styles['operator'] if tok_str in {'=', '.', '(', ')', '[', ']', '{', '}', ',', ':'} else styles['punct']
+            else:
+                color = styles['default']
+
+            styled = (html.escape(tok_str)
+                .replace(' ', '&nbsp;')
+                .replace('\t', '&nbsp;' * 4)
+                .replace('\n', '<br>'))
+            weight = '700' if tok_type == token.NAME and keyword.iskeyword(tok_str) else '500'
+            result.append(f"<span style='color:{color};font-weight:{weight}'>{styled}</span>")
+            last_row, last_col = end_pos
+
+        append_plain(slice_text(last_row, last_col, len(lines), len(lines[-1]) if lines else 0))
+        return ''.join(result)
+    except Exception:
+        return html.escape(code).replace('\n', '<br>').replace(' ', '&nbsp;')
+
+
+def themed_badge(label, value, bg='#eef2ff', color='#1e3a8a'):
+    if value in [None, '']:
+        return ''
+    return (
+        f"<span style='display:inline-block;margin:0 6px 6px 0;padding:5px 10px;"
+        f"border-radius:999px;background:{bg};color:{color};font-size:12px;"
+        f"font-weight:700;border:1px solid rgba(0,0,0,0.06)'>"
+        f"<span style='opacity:.8'>{html.escape(str(label))}:</span> {html.escape(str(value))}</span>"
+    )
+
+
+def format_rich_text_block(text_value):
+    if not text_value:
+        return ''
+    paragraphs = [p.strip() for p in str(text_value).split('\n') if p.strip()]
+    return ''.join(
+        f"<div style='margin:0 0 8px 0;color:#334155;line-height:1.55'>{html.escape(p)}</div>"
+        for p in paragraphs
+    )
+
+
+def build_examples_list(items, title_text):
+    if not items:
+        return ''
+    rows = ''.join(
+        f"<li style='margin:0 0 6px 0'><span style='color:#0f172a'>{html.escape(str(item))}</span></li>"
+        for item in items
+    )
+    return (
+        f"<div style='margin-top:10px'>"
+        f"<div style='font-weight:800;color:#7c2d12;margin-bottom:6px'>{html.escape(title_text)}</div>"
+        f"<ul style='margin:0;padding-left:18px;color:#334155'>{rows}</ul></div>"
+    )
+
+
+def build_functions_chips(functions, title_text):
+    if not functions:
+        return ''
+    chips = ''.join(
+        f"<span style='display:inline-block;margin:4px 6px 0 0;padding:4px 8px;border-radius:999px;background:#ecfeff;color:#155e75;border:1px solid #a5f3fc;font-size:12px;font-weight:700'>{html.escape(str(fn))}</span>"
+        for fn in functions[:12]
+    )
+    return (
+        f"<div style='margin-top:10px'>"
+        f"<div style='font-weight:800;color:#0f766e;margin-bottom:4px'>{html.escape(title_text)}</div>{chips}</div>"
+    )
+
+
+def build_rich_card_html(name, attrs, compact=False):
+    display_name = translate_name(attrs.get('label', name))
+    domain = attrs.get('domain', 'General')
+    accent = TYPE_COLOR_OVERRIDES.get(attrs.get('kind'), DOMAIN_COLORS.get(domain, DOMAIN_COLORS['General']))
+    accent_text = '#1f2937'
+    body_padding = '14px' if compact else '18px'
+    radius = '14px' if compact else '16px'
+    shadow = '0 8px 20px rgba(15,23,42,.12)' if compact else '0 14px 30px rgba(15,23,42,.14)'
+
+    header = (
+        f"<div style='display:flex;align-items:flex-start;justify-content:space-between;gap:10px'>"
+        f"<div>"
+        f"<div style='font-size:{'17px' if compact else '19px'};font-weight:900;color:{accent_text};margin-bottom:6px'>"
+        f"{html.escape(display_name)}</div>"
+        f"<div style='height:4px;width:68px;border-radius:999px;background:{accent};opacity:.95'></div>"
+        f"</div></div>"
+    )
+
+    badges = ''.join([
+        themed_badge(tr('Tipo', 'Type'), translate_kind(attrs['kind']) if attrs.get('kind') else '', '#eff6ff', '#1d4ed8') if attrs.get('kind') else '',
+        themed_badge(tr('Dominio', 'Domain'), translate_name(attrs['domain']) if attrs.get('domain') else '', '#fff7ed', '#c2410c') if attrs.get('domain') else '',
+        themed_badge(tr('Año', 'Year'), attrs.get('year'), '#f5f3ff', '#6d28d9') if attrs.get('year') else '',
+    ])
+
     title_value = node_title(attrs)
-    if title_value:
-        lines.append("")
-        lines.append(title_value)
+    related_subareas = attrs.get('related_subareas', [])
+    related_concepts = attrs.get('related_concepts', [])
+    related_subareas_html = ''
+    if related_subareas:
+        related_subareas_html = build_functions_chips([translate_name(v) for v in related_subareas], tr('Subáreas relacionadas', 'Related subareas'))
+    related_concepts_html = ''
+    if related_concepts:
+        related_concepts_html = build_functions_chips([translate_name(v) for v in related_concepts], tr('Conceptos relacionados', 'Related concepts'))
 
-    if attrs.get("related_subareas"):
-        lines.append("")
-        lines.append(tr("Subáreas relacionadas:", "Related subareas:"))
-        lines.append(", ".join(translate_name(v) for v in attrs["related_subareas"][:6]))
-    if attrs.get("related_concepts"):
-        lines.append("")
-        lines.append(tr("Conceptos relacionados:", "Related concepts:"))
-        lines.append(", ".join(translate_name(v) for v in attrs["related_concepts"][:8]))
+    code_html = ''
+    if attrs.get('code_example'):
+        code_html = (
+            f"<div style='margin-top:12px'>"
+            f"<div style='font-weight:800;color:#1d4ed8;margin-bottom:6px'>{html.escape(tr('Ejemplo de código', 'Code example'))}</div>"
+            f"<div style='background:#0f172a;border:1px solid #1e293b;border-radius:12px;overflow:auto'>"
+            f"<div style='display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid #1e293b;background:#111827'>"
+            f"<span style='width:10px;height:10px;border-radius:999px;background:#f87171;display:inline-block'></span>"
+            f"<span style='width:10px;height:10px;border-radius:999px;background:#fbbf24;display:inline-block'></span>"
+            f"<span style='width:10px;height:10px;border-radius:999px;background:#34d399;display:inline-block'></span>"
+            f"<span style='margin-left:8px;font-size:12px;color:#93c5fd;font-weight:700'>Python</span>"
+            f"</div>"
+            f"<div style='padding:12px 14px;font-family:Consolas, Monaco, monospace;font-size:13px;line-height:1.6;color:#e5e7eb'>{render_python_code_html(attrs['code_example'])}</div>"
+            f"</div></div>"
+        )
 
-    if attrs.get("examples"):
-        lines.append("")
-        lines.append(tr("Ejemplos:", "Examples:"))
-        for ex in attrs["examples"][:4]:
-            lines.append(f"- {ex}")
+    link_html = ''
+    if attrs.get('url'):
+        url = html.escape(attrs['url'])
+        link_html = f"<div style='margin-top:12px'><a href='{url}' target='_blank' rel='noopener noreferrer' style='color:#2563eb;font-weight:800;text-decoration:none'>{html.escape(tr('Ver más / profundizar en el tema', 'Learn more / go deeper'))} ↗</a></div>"
 
-    if attrs.get("functions"):
-        lines.append("")
-        lines.append(tr("Funciones clave:", "Key functions:"))
-        lines.append(", ".join(attrs["functions"]))
-    if attrs.get("url"):
-        lines.append("")
-        lines.append(tr("Abrir enlace desde el panel inferior o con doble click.", "Open the link from the lower panel or with double click."))
-    return "\n".join(lines)
+    max_width = '420px' if compact else '100%'
+
+    return (
+        f"<div style='max-width:{max_width};background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);"
+        f"border:1px solid #e2e8f0;border-radius:{radius};padding:{body_padding};box-shadow:{shadow};"
+        f"font-family:Inter,Segoe UI,Arial,sans-serif;color:#0f172a'>"
+        f"{header}"
+        f"<div style='margin-top:12px'>{badges}</div>"
+        f"<div style='margin-top:10px'>{format_rich_text_block(title_value)}</div>"
+        f"{build_examples_list(attrs.get('examples', []), tr('Ejemplos o usos típicos', 'Examples or common uses'))}"
+        f"{build_functions_chips(attrs.get('functions', []), tr('Funciones principales', 'Main functions'))}"
+        f"{related_subareas_html}"
+        f"{related_concepts_html}"
+        f"{code_html}"
+        f"{link_html}"
+        f"</div>"
+    )
+
+
+def enrich_title(name, attrs):
+    return build_rich_card_html(name, attrs, compact=True)
+
 
 def build_detail_html(name, attrs):
-    def esc(v):
-        return html.escape(str(v))
-
-    display_name = translate_name(attrs.get("label", name))
-    parts = [f"<h3 style='margin:0 0 8px 0'>{esc(display_name)}</h3>"]
-    meta = []
-    if attrs.get("kind"):
-        meta.append(f"<b>{esc(tr('Tipo', 'Type'))}:</b> {esc(translate_kind(attrs['kind']))}")
-    if attrs.get("domain"):
-        meta.append(f"<b>{esc(tr('Dominio', 'Domain'))}:</b> {esc(translate_name(attrs['domain']))}")
-    if attrs.get("year"):
-        meta.append(f"<b>{esc(tr('Año', 'Year'))}:</b> {esc(attrs['year'])}")
-    if meta:
-        parts.append("<p style='margin:0 0 10px 0'>" + " | ".join(meta) + "</p>")
-    title_value = node_title(attrs)
-    if title_value:
-        parts.append(f"<p style='margin:0 0 12px 0'>{esc(title_value)}</p>")
-
-    if attrs.get("related_subareas"):
-        parts.append("<p><b>" + esc(tr("Subáreas relacionadas", "Related subareas")) + ":</b> " + esc(", ".join(translate_name(v) for v in attrs["related_subareas"])) + "</p>")
-    if attrs.get("related_concepts"):
-        parts.append("<p><b>" + esc(tr("Conceptos relacionados", "Related concepts")) + ":</b> " + esc(", ".join(translate_name(v) for v in attrs["related_concepts"])) + "</p>")
-
-    if attrs.get("examples"):
-        parts.append("<div style='margin-top:10px'><b>" + esc(tr("Ejemplos o usos típicos", "Examples or common uses")) + "</b><ul>")
-        for ex in attrs["examples"]:
-            parts.append(f"<li>{esc(ex)}</li>")
-        parts.append("</ul></div>")
-
-    if attrs.get("functions"):
-        parts.append(f"<p><b>{esc(tr('Funciones principales', 'Main functions'))}:</b> {esc(', '.join(attrs['functions']))}</p>")
-    if attrs.get("code_example"):
-        parts.append(f"<div style='margin-top:10px'><b>{esc(tr('Ejemplo de código', 'Code example'))}</b><pre style='white-space:pre-wrap;background:#f4f4f4;padding:10px;border-radius:8px;overflow:auto'>{esc(attrs['code_example'])}</pre></div>")
-    if attrs.get("url"):
-        url = esc(attrs["url"])
-        parts.append(f"<p><a href='{url}' target='_blank' rel='noopener noreferrer'>{esc(tr('Ver más / profundizar en el tema', 'Learn more / go deeper'))}</a></p>")
-
-    return "".join(parts)
+    return build_rich_card_html(name, attrs, compact=False)
 
 def build_graph(graph_nodes, graph_edges):
     G = nx.Graph()
