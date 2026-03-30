@@ -23,7 +23,7 @@ GITHUB_URL = "https://github.com/AlexisTorrresA"
 LINKEDIN_DISPLAY_NAME = "Alexis Torres Álvarez"
 LINKEDIN_IMAGE_URL = os.getenv("LINKEDIN_IMAGE_URL", "")
 
-top_bar = st.columns([1.1, 1.25, 1.65], gap="medium")
+top_bar = st.columns([1.2, 2.8], gap="medium")
 with top_bar[0]:
     language_choice = st.selectbox("Idioma / Language", ["Español", "English"], index=0)
 IS_EN = language_choice == "English"
@@ -31,11 +31,18 @@ IS_EN = language_choice == "English"
 def tr(es: str, en: str) -> str:
     return en if IS_EN else es
 
-with top_bar[1]:
-    show_right_panel = st.toggle(tr("Mostrar panel derecho", "Show right panel"), value=False)
+if "show_right_panel" not in st.session_state:
+    st.session_state.show_right_panel = False
+show_right_panel = st.session_state.show_right_panel
+show_function_nodes = True
 
-with top_bar[2]:
-    show_function_nodes = st.toggle(tr("Mostrar funciones de librerías", "Show library function nodes"), value=False)
+with top_bar[1]:
+    st.caption(
+        tr(
+            "Los nodos de funciones se muestran automáticamente debajo de cada librería. El panel derecho se abre y cierra con la flecha lateral.",
+            "Function nodes are shown automatically below each library. The right panel opens and closes with the side arrow."
+        )
+    )
 
 st.title(tr("Mapa conceptual interactivo de tecnología", "Interactive Technology Concept Map"))
 st.write(
@@ -221,6 +228,7 @@ KIND_TRANSLATIONS = {
     "dataset": ("dataset", "dataset"),
     "aplicacion": ("aplicación", "application"),
     "funcion": ("función", "function"),
+    "contenedor": ("agrupador", "group"),
 }
 def translate_name(name: str) -> str:
     if not IS_EN:
@@ -250,6 +258,7 @@ KIND_STYLES = {
     "dataset": {"shape": "hexagon", "size_boost": -2},
     "aplicacion": {"shape": "diamond", "size_boost": -1},
     "funcion": {"shape": "ellipse", "size_boost": -4},
+    "contenedor": {"shape": "dot", "size_boost": -2},
 }
 
 DOMAIN_COLORS = {
@@ -269,6 +278,7 @@ TYPE_COLOR_OVERRIDES = {
     "recurso": "#fff3bf",
     "dataset": "#e5dbff",
     "funcion": "#f1f3f5",
+    "contenedor": "#dee2e6",
 }
 
 # =========================================================
@@ -461,6 +471,26 @@ def build_related_examples(item_kind, subarea, related):
         ]
     return [f"Elemento asociado a {subarea}."]
 
+def make_group_name(subarea, bucket_key):
+    return f"{subarea} :: {bucket_key}"
+
+def ensure_bucket_container(domain_root, subarea, bucket_key, label_es, label_en, description_es, description_en):
+    container_name = make_group_name(subarea, bucket_key)
+    add_node(container_name, {
+        "kind": "contenedor",
+        "domain": domain_root,
+        "size": 14,
+        "title": description_es,
+        "title_en": description_en,
+        "label": label_es,
+        "label_en": label_en,
+        "tags": [domain_root, subarea, bucket_key],
+        "related_subareas": [subarea],
+        "related_concepts": [subarea],
+    })
+    add_edge(subarea, container_name, tr("agrupa", "groups"))
+    return container_name
+
 def add_taxonomy_branch(domain_root, subarea, concept_items=None, tool_items=None, lib_items=None, resource_items=None, dataset_items=None, app_items=None, year=None, description=None):
     add_node(subarea, {
         "kind": "subarea",
@@ -500,16 +530,20 @@ def add_taxonomy_branch(domain_root, subarea, concept_items=None, tool_items=Non
         add_edge(subarea, item["name"], "incluye")
         concept_names.append(item["name"])
 
-    buckets = [
-        (tool_items or [], "herramienta"),
-        (lib_items or [], "libreria"),
-        (resource_items or [], "recurso"),
-        (dataset_items or [], "dataset"),
-        (app_items or [], "aplicacion"),
+    bucket_specs = [
+        (tool_items or [], "herramienta", "tools", "Herramientas", "Tools", "Agrupa herramientas principales usadas en esta subárea.", "Groups the main tools used in this subarea."),
+        (lib_items or [], "libreria", "libraries", "Librerías", "Libraries", "Agrupa librerías y frameworks principales de esta subárea.", "Groups the main libraries and frameworks in this subarea."),
+        (resource_items or [], "recurso", "resources", "Recursos", "Resources", "Agrupa recursos y sitios recomendados para profundizar.", "Groups recommended resources and sites for further study."),
+        (dataset_items or [], "dataset", "datasets", "Datasets", "Datasets", "Agrupa datasets y fuentes de datos representativas.", "Groups representative datasets and data sources."),
+        (app_items or [], "aplicacion", "applications", "Aplicaciones", "Applications", "Agrupa aplicaciones y casos de uso prácticos.", "Groups applications and practical use cases."),
     ]
 
-    for items, inferred_kind in buckets:
+    for items, inferred_kind, bucket_key, label_es, label_en, desc_es, desc_en in bucket_specs:
         normalized_items = [normalize_item(item, inferred_kind, subarea) for item in items]
+        if not normalized_items:
+            continue
+
+        container_name = ensure_bucket_container(domain_root, subarea, bucket_key, label_es, label_en, desc_es, desc_en)
         for item in normalized_items:
             related = item["related_to"] or concept_names[:] or [subarea]
             node_examples = item["examples"] or build_related_examples(item["kind"], subarea, related)
@@ -535,11 +569,8 @@ def add_taxonomy_branch(domain_root, subarea, concept_items=None, tool_items=Non
                     related_subareas=[subarea],
                 ),
             )
+            add_edge(container_name, item["name"], relation_label(item["kind"]))
 
-            # Conexión directa desde la subárea principal, no desde cada concepto hijo.
-            # Así el mapa queda más limpio visualmente:
-            # Deep Learning -> PyTorch, Machine Learning -> scikit-learn, etc.
-            add_edge(subarea, item["name"], relation_label(item["kind"]))
 # =========================================================
 # Nivel 0: dominios principales
 # =========================================================
@@ -644,6 +675,16 @@ python_libraries = [
     },
 ]
 
+python_libraries_container = ensure_bucket_container(
+    "Ingeniería de Software",
+    "Python",
+    "libraries",
+    "Librerías",
+    "Libraries",
+    "Agrupa las principales librerías del ecosistema Python usadas en el mapa.",
+    "Groups the main Python ecosystem libraries used in the map.",
+)
+
 for lib in python_libraries:
     item = normalize_item(lib, "libreria", "Python")
     add_node(
@@ -662,7 +703,7 @@ for lib in python_libraries:
             related_subareas=["Python"],
         ),
     )
-    add_edge("Python", item["name"], "usa")
+    add_edge(python_libraries_container, item["name"], "usa")
 
 # =========================================================
 # Inteligencia Artificial
@@ -1947,6 +1988,7 @@ LIBRARY_FUNCTION_CATALOG = {
         {"name": "predict", "description": "Predice con el modelo entrenado.", "code": "pred = model.predict(X_test)"},
     ],
     "PyTorch": [
+        {"name": "torch.randn", "description": "Genera tensores con distribución normal estándar, útil para pesos iniciales, ejemplos y pruebas rápidas.", "code": "import torch\nweights = torch.randn(input_size, hidden_size, requires_grad=True)"},
         {"name": "nn.Module", "description": "Clase base para modelos en PyTorch.", "code": "import torch.nn as nn\nclass Net(nn.Module):\n    pass"},
         {"name": "forward", "description": "Define el flujo directo del modelo.", "code": "def forward(self, x):\n    return x"},
         {"name": "optimizer.step", "description": "Actualiza los parámetros del modelo.", "code": "optimizer.step()"},
@@ -2051,11 +2093,13 @@ def add_library_function_nodes(graph_nodes, graph_edges):
                     examples=[
                         tr("Uso típico dentro de la librería.", "Typical usage inside the library."),
                         tr("Se puede estudiar junto con el código de ejemplo del panel.", "It can be studied together with the code example in the panel."),
+                        tr(f"Pertenece a {lib_name}.", f"Belongs to {lib_name}."),
                     ],
                     tags=merge_unique_list(attrs.get("tags", []), [fn_node_name]),
-                    related_concepts=attrs.get("related_concepts", []),
+                    related_concepts=merge_unique_list(attrs.get("related_concepts", []), [lib_name]),
                     related_subareas=attrs.get("related_subareas", []),
                     code_example=entry.get("code"),
+                    title_en=entry["description"],
                 )
                 new_nodes[fn_node_name]["label"] = entry["name"]
                 new_nodes[fn_node_name]["label_en"] = entry["name"]
@@ -2170,7 +2214,10 @@ def build_graph(graph_nodes, graph_edges):
         attrs = dict(attrs)
         attrs["full_title"] = enrich_title(name, attrs)
         attrs["detail_html"] = build_detail_html(name, attrs)
-        attrs["label"] = translate_name(attrs.get("label", name))
+        if IS_EN and attrs.get("label_en"):
+            attrs["label"] = attrs.get("label_en")
+        else:
+            attrs["label"] = translate_name(attrs.get("label", name))
         G.add_node(name, **attrs)
     for src, dst, rel in graph_edges:
         if src in graph_nodes and dst in graph_nodes:
@@ -2181,7 +2228,7 @@ def filter_graph(G, selected_kinds, selected_domains, selected_subareas=None):
     H = G.copy()
     remove_nodes = []
     for n, attrs in H.nodes(data=True):
-        if selected_kinds and attrs.get("kind") not in selected_kinds:
+        if selected_kinds and attrs.get("kind") not in selected_kinds and attrs.get("kind") != "contenedor":
             remove_nodes.append(n)
             continue
         if selected_domains and attrs.get("domain") not in selected_domains:
@@ -2300,10 +2347,17 @@ def render_graph(G):
 
     for src, dst, edge_attrs in G.edges(data=True):
         title = edge_attrs.get("relation", "")
+        src_kind = G.nodes[src].get("kind") if src in G.nodes else ""
+        dst_kind = G.nodes[dst].get("kind") if dst in G.nodes else ""
+        edge_kwargs = {"title": title}
+        if src_kind == "contenedor" or dst_kind == "contenedor":
+            edge_kwargs.update({"width": 2.0, "color": "#343a40", "arrows": "to"})
+        elif src_kind == "libreria" and dst_kind == "funcion":
+            edge_kwargs.update({"width": 2.0, "color": "#495057", "arrows": "to", "length": 140})
         if edge_attrs.get("hidden"):
-            net.add_edge(src, dst, title=title, hidden=True, physics=True, color="rgba(0,0,0,0)")
+            net.add_edge(src, dst, hidden=True, physics=True, color="rgba(0,0,0,0)", **edge_kwargs)
         else:
-            net.add_edge(src, dst, title=title)
+            net.add_edge(src, dst, **edge_kwargs)
 
     options = {
         "nodes": {
@@ -2361,22 +2415,26 @@ def render_graph(G):
 # =========================================================
 graph_nodes = dict(nodes)
 graph_edges = list(edges)
+graph_nodes, graph_edges = add_library_function_nodes(graph_nodes, graph_edges)
 
 G_full = build_graph(graph_nodes, graph_edges)
+G_full = add_similarity_cluster_edges(G_full)
 
 all_domains = sorted({attrs.get("domain", "General") for attrs in graph_nodes.values()})
 all_kinds = sorted({attrs.get("kind", "concepto") for attrs in graph_nodes.values()})
 legend_kinds = [k for k in all_kinds if k != "principal"]
 
 selected_domains = st.sidebar.multiselect(
-    "Filtrar por dominio",
+    tr("Filtrar por dominio", "Filter by domain"),
     all_domains,
     default=[],
+    format_func=lambda v: translate_name(v),
 )
 selected_kinds = st.sidebar.multiselect(
-    "Filtrar por tipo",
+    tr("Filtrar por tipo", "Filter by type"),
     all_kinds,
     default=["principal", "subarea", "concepto"] if set(["principal", "subarea", "concepto"]).issubset(set(all_kinds)) else [],
+    format_func=lambda v: translate_kind(v),
 )
 
 all_subareas = sorted({
@@ -2384,9 +2442,10 @@ all_subareas = sorted({
     if attrs.get("kind") == "subarea"
 })
 selected_subareas = st.sidebar.multiselect(
-    "Filtrar por subárea",
+    tr("Filtrar por subárea", "Filter by subarea"),
     all_subareas,
     default=[],
+    format_func=lambda v: translate_name(v),
 )
 
 G_filtered = filter_graph(G_full, selected_kinds, selected_domains, selected_subareas)
@@ -2395,9 +2454,17 @@ G_filtered = filter_graph(G_full, selected_kinds, selected_domains, selected_sub
 # Layout principal
 # =========================================================
 if show_right_panel:
-    left_col, right_col = st.columns([4.3, 1.2], gap="large")
+    left_col, toggle_col, right_col = st.columns([4.3, 0.22, 1.25], gap="small")
 else:
-    left_col, right_col = st.container(), None
+    left_col, toggle_col = st.columns([1.0, 0.055], gap="small")
+    right_col = None
+
+with toggle_col:
+    st.markdown("<div style='padding-top:3.2rem'></div>", unsafe_allow_html=True)
+    arrow_label = "❮" if show_right_panel else "❯"
+    if st.button(arrow_label, key="toggle_right_panel_arrow", help=tr("Mostrar u ocultar panel derecho", "Show or hide right panel"), use_container_width=True):
+        st.session_state.show_right_panel = not show_right_panel
+        st.rerun()
 
 with left_col:
     st.subheader(tr("Mapa visual", "Visual map"))
@@ -2425,7 +2492,7 @@ if show_right_panel and right_col is not None:
 
         st.markdown("---")
         st.markdown("**" + tr("Leyenda de tipos", "Node type legend") + "**")
-        for kind in legend_kinds + (["funcion"] if show_function_nodes and "funcion" in all_kinds else []):
+        for kind in legend_kinds:
             if kind in KIND_STYLES:
                 st.markdown(f"- **{translate_kind(kind)}** → {KIND_STYLES[kind]['shape']}")
 
