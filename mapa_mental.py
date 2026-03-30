@@ -2747,7 +2747,7 @@ with filter_row[3]:
     selected_kinds = st.multiselect(
         tr("Filtrar por tipo", "Filter by type"),
         all_kinds,
-        default=all_kinds,
+        default=[k for k in ["principal", "concepto", "subarea"] if k in all_kinds],
         format_func=lambda v: translate_kind(v),
         key="top_filter_kinds",
     )
