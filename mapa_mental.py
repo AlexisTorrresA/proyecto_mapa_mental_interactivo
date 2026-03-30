@@ -315,13 +315,10 @@ def add_taxonomy_branch(domain_root, subarea, concept_items=None, tool_items=Non
                 ),
             )
 
-            linked = False
-            for concept_name in related:
-                if concept_name in concept_names:
-                    add_edge(concept_name, item["name"], relation_label(item["kind"]))
-                    linked = True
-            if not linked:
-                add_edge(subarea, item["name"], relation_label(item["kind"]))
+            # Conexión directa desde la subárea principal, no desde cada concepto hijo.
+            # Así el mapa queda más limpio visualmente:
+            # Deep Learning -> PyTorch, Machine Learning -> scikit-learn, etc.
+            add_edge(subarea, item["name"], relation_label(item["kind"]))
 # =========================================================
 # Nivel 0: dominios principales
 # =========================================================
