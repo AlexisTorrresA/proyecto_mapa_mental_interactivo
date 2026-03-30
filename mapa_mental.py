@@ -40,13 +40,7 @@ if "show_right_panel" not in st.session_state:
 show_right_panel = st.session_state.show_right_panel
 show_function_nodes = True
 
-with top_bar[1]:
-    st.caption(
-        tr(
-            "Los nodos de funciones se muestran automáticamente debajo de cada librería. El panel derecho se abre y cierra con la flecha lateral.",
-            "Function nodes are shown automatically below each library. The right panel opens and closes with the side arrow."
-        )
-    )
+
 
 st.title(tr("Mapa conceptual interactivo de tecnología", "Interactive Technology Concept Map"))
 st.write(
