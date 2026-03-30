@@ -271,6 +271,19 @@ add_node("Python", {
 })
 add_edge("Ingeniería de Software", "Python", "incluye")
 
+python_libraries_detail = []
+for lib in python_libraries:
+    python_libraries_detail.append(
+        {
+            "name": lib["name"],
+            "kind": "libreria",
+            "year": lib.get("year"),
+            "title": lib.get("title", ""),
+            "url": lib.get("url"),
+            "functions": lib.get("functions", []),
+        }
+    )
+
 add_node(
     "Python :: Librerías",
     {
@@ -279,17 +292,7 @@ add_node(
         "size": 16,
         "year": 1991,
         "title": "Grupo de librerías y frameworks relevantes del ecosistema Python. Haz click para ver el detalle ampliado de cada una.",
-        "items_detail": [
-            {
-                "name": lib["name"],
-                "kind": "libreria",
-                "year": lib.get("year"),
-                "title": lib.get("title", ""),
-                "url": lib.get("url"),
-                "functions": lib.get("functions", []),
-            }
-            for lib in python_libraries
-        ],
+        "items_detail": python_libraries_detail,
         "group_parent": "Python",
         "label_type": "Librerías",
         "tags": ["Ingeniería de Software", "Python", "Librerías"],
