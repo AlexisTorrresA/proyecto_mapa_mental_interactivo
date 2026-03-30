@@ -12,15 +12,229 @@ import streamlit as st
 import streamlit.components.v1 as components
 from pyvis.network import Network
 
-st.set_page_config(page_title="Mapa conceptual interactivo", layout="wide")
-st.title("Mapa conceptual interactivo de tecnología")
-st.write(
-    "Haz click en un nodo para ver su detalle ampliado dentro del panel inferior del mapa. "
-    "Usa los filtros de la derecha para simplificar la vista."
+st.set_page_config(
+    page_title="Interactive Technology Concept Map",
+    layout="wide",
+    initial_sidebar_state="collapsed",
 )
 
 LINKEDIN_URL = "https://www.linkedin.com/in/alexis-torres87/"
 GITHUB_URL = "https://github.com/AlexisTorrresA"
+LINKEDIN_DISPLAY_NAME = "Alexis Torres Álvarez"
+LINKEDIN_IMAGE_URL = os.getenv("LINKEDIN_IMAGE_URL", "")
+
+top_bar = st.columns([1.1, 1.25, 1.65], gap="medium")
+with top_bar[0]:
+    language_choice = st.selectbox("Idioma / Language", ["Español", "English"], index=0)
+IS_EN = language_choice == "English"
+
+def tr(es: str, en: str) -> str:
+    return en if IS_EN else es
+
+with top_bar[1]:
+    show_right_panel = st.toggle(tr("Mostrar panel derecho", "Show right panel"), value=False)
+
+with top_bar[2]:
+    show_function_nodes = st.toggle(tr("Mostrar funciones de librerías", "Show library function nodes"), value=False)
+
+st.title(tr("Mapa conceptual interactivo de tecnología", "Interactive Technology Concept Map"))
+st.write(
+    tr(
+        "Haz click en un nodo para ver su detalle ampliado dentro del panel inferior del mapa. Usa los filtros laterales para simplificar la vista.",
+        "Click a node to see its detailed information in the panel below the map. Use the side filters to simplify the view."
+    )
+)
+
+NAME_TRANSLATIONS = {
+    "Inteligencia Artificial": "Artificial Intelligence",
+    "Ingeniería de Software": "Software Engineering",
+    "Cloud Computing": "Cloud Computing",
+    "Ciberseguridad": "Cybersecurity",
+    "Robótica e IoT": "Robotics and IoT",
+    "Computación Cuántica": "Quantum Computing",
+    "Procesamiento de Lenguaje Natural": "Natural Language Processing",
+    "Visión por Computador": "Computer Vision",
+    "IA Generativa": "Generative AI",
+    "Ciencia de Datos": "Data Science",
+    "Ética y Gobernanza de IA": "AI Ethics and Governance",
+    "Fundamentos de Programación": "Programming Fundamentals",
+    "Desarrollo de Aplicaciones": "Application Development",
+    "Bases de Datos": "Databases",
+    "Arquitectura de Software": "Software Architecture",
+    "Testing y Calidad": "Testing and Quality",
+    "Gestión de Proyectos": "Project Management",
+    "Infraestructura Cloud": "Cloud Infrastructure",
+    "Servicios Cloud": "Cloud Services",
+    "Redes y Sistemas": "Networks and Systems",
+    "Datos en la Nube": "Cloud Data",
+    "Seguridad Cloud": "Cloud Security",
+    "Automatización y Operación": "Automation and Operations",
+    "Seguridad de Redes": "Network Security",
+    "Seguridad de Sistemas": "System Security",
+    "Seguridad de Aplicaciones": "Application Security",
+    "Gestión de Identidades": "Identity Management",
+    "Monitoreo y Respuesta": "Monitoring and Response",
+    "Gobernanza y Cumplimiento": "Governance and Compliance",
+    "Electrónica y Hardware": "Electronics and Hardware",
+    "Sensores y Actuadores": "Sensors and Actuators",
+    "Sistemas Embebidos": "Embedded Systems",
+    "Comunicación y Redes IoT": "IoT Communication and Networks",
+    "Control y Automatización": "Control and Automation",
+    "Visión e Inteligencia Integrada": "Integrated Vision and Intelligence",
+    "Plataformas y Nube IoT": "IoT Platforms and Cloud",
+    "Fundamentos Cuánticos": "Quantum Foundations",
+    "Circuitos y Puertas Cuánticas": "Quantum Circuits and Gates",
+    "Algoritmos Cuánticos": "Quantum Algorithms",
+    "Machine Learning Cuántico": "Quantum Machine Learning",
+    "Hardware y Ecosistema Cuántico": "Quantum Hardware and Ecosystem",
+    "aprendizaje supervisado": "supervised learning",
+    "aprendizaje no supervisado": "unsupervised learning",
+    "aprendizaje por refuerzo": "reinforcement learning",
+    "clasificación": "classification",
+    "regresión": "regression",
+    "clustering": "clustering",
+    "redes neuronales": "neural networks",
+    "clasificación de imágenes": "image classification",
+    "detección de objetos": "object detection",
+    "segmentación": "segmentation",
+    "tokenización": "tokenization",
+    "embeddings": "embeddings",
+    "traducción": "translation",
+    "limpieza de datos": "data cleaning",
+    "análisis exploratorio": "exploratory analysis",
+    "estadística descriptiva": "descriptive statistics",
+    "inferencia": "inference",
+    "visualización": "visualization",
+    "feature engineering": "feature engineering",
+    "versionado de modelos": "model versioning",
+    "pipelines ML": "ML pipelines",
+    "monitoreo": "monitoring",
+    "sesgo algorítmico": "algorithmic bias",
+    "explicabilidad": "explainability",
+    "privacidad": "privacy",
+    "auditoría": "audit",
+    "algoritmos": "algorithms",
+    "estructuras de datos": "data structures",
+    "programación funcional": "functional programming",
+    "complejidad algorítmica": "algorithmic complexity",
+    "backend": "backend",
+    "frontend": "frontend",
+    "microservicios": "microservices",
+    "integración": "integration",
+    "modelo relacional": "relational model",
+    "consultas": "queries",
+    "transacciones": "transactions",
+    "índices": "indexes",
+    "monolito": "monolith",
+    "arquitectura hexagonal": "hexagonal architecture",
+    "observabilidad": "observability",
+    "contenedores": "containers",
+    "requisitos": "requirements",
+    "historias de usuario": "user stories",
+    "virtualización": "virtualization",
+    "alta disponibilidad": "high availability",
+    "redes virtuales": "virtual networks",
+    "subredes": "subnets",
+    "balanceadores": "load balancers",
+    "administración Linux/Windows": "Linux/Windows administration",
+    "data lake": "data lake",
+    "data warehouse": "data warehouse",
+    "bases de datos gestionadas": "managed databases",
+    "almacenamiento objeto": "object storage",
+    "cifrado": "encryption",
+    "control de acceso": "access control",
+    "cumplimiento": "compliance",
+    "provisioning": "provisioning",
+    "autoescalado": "autoscaling",
+    "despliegue automatizado": "automated deployment",
+    "firewalls": "firewalls",
+    "segmentación": "segmentation",
+    "análisis de tráfico": "traffic analysis",
+    "hardening": "hardening",
+    "gestión de parches": "patch management",
+    "malware": "malware",
+    "privilegios": "privileges",
+    "validación de entradas": "input validation",
+    "gestión de secretos": "secret management",
+    "autenticación segura": "secure authentication",
+    "autenticación": "authentication",
+    "autorización": "authorization",
+    "respuesta a incidentes": "incident response",
+    "correlación de eventos": "event correlation",
+    "riesgo": "risk",
+    "políticas": "policies",
+    "continuidad operacional": "operational continuity",
+    "microcontroladores": "microcontrollers",
+    "energía": "power",
+    "señales": "signals",
+    "circuitos": "circuits",
+    "lectura de sensores": "sensor reading",
+    "servos": "servos",
+    "motores": "motors",
+    "relés": "relays",
+    "sensores de distancia": "distance sensors",
+    "sensores de temperatura": "temperature sensors",
+    "firmware": "firmware",
+    "tiempo real": "real time",
+    "edge computing": "edge computing",
+    "optimización de recursos": "resource optimization",
+    "navegación": "navigation",
+    "control de movimiento": "motion control",
+    "seguimiento": "tracking",
+    "percepción": "perception",
+    "decisión local": "local decision making",
+    "gestión remota": "remote management",
+    "ingestión de telemetría": "telemetry ingestion",
+    "monitoreo de dispositivos": "device monitoring",
+    "qubit": "qubit",
+    "superposición": "superposition",
+    "entrelazamiento": "entanglement",
+    "interferencia": "interference",
+    "medición cuántica": "quantum measurement",
+    "puertas cuánticas": "quantum gates",
+    "circuitos cuánticos": "quantum circuits",
+    "Hadamard": "Hadamard",
+    "CNOT": "CNOT",
+    "Grover": "Grover",
+    "Shor": "Shor",
+    "QFT": "QFT",
+    "VQE": "VQE",
+    "QAOA": "QAOA",
+    "circuitos variacionales": "variational circuits",
+    "quantum kernels": "quantum kernels",
+    "modelos híbridos": "hybrid models",
+    "codificación de datos": "data encoding",
+    "NISQ": "NISQ",
+    "mitigación de errores": "error mitigation",
+    "annealing": "annealing",
+    "qubits superconductores": "superconducting qubits",
+    "iones atrapados": "trapped ions",
+}
+KIND_TRANSLATIONS = {
+    "principal": ("principal", "main"),
+    "subarea": ("subárea", "subarea"),
+    "concepto": ("concepto", "concept"),
+    "herramienta": ("herramienta", "tool"),
+    "libreria": ("librería", "library"),
+    "framework": ("framework", "framework"),
+    "recurso": ("recurso", "resource"),
+    "dataset": ("dataset", "dataset"),
+    "aplicacion": ("aplicación", "application"),
+    "funcion": ("función", "function"),
+}
+def translate_name(name: str) -> str:
+    if not IS_EN:
+        return name
+    return NAME_TRANSLATIONS.get(name, name)
+
+def translate_kind(kind: str) -> str:
+    if kind not in KIND_TRANSLATIONS:
+        return kind
+    return KIND_TRANSLATIONS[kind][1] if IS_EN else KIND_TRANSLATIONS[kind][0]
+
+def node_title(attrs: dict) -> str:
+    return attrs.get("title_en", attrs.get("title", "")) if IS_EN else attrs.get("title", "")
+
 
 # =========================================================
 # Estilos
@@ -44,6 +258,7 @@ DOMAIN_COLORS = {
     "Cloud Computing": "#ffd166",
     "Ciberseguridad": "#ff6b6b",
     "Robótica e IoT": "#9b5de5",
+    "Computación Cuántica": "#7b6cff",
     "General": "#adb5bd",
 }
 
@@ -59,27 +274,30 @@ TYPE_COLOR_OVERRIDES = {
 # =========================================================
 # Sidebar
 # =========================================================
-st.sidebar.header("Configuración del mapa")
+st.sidebar.header(tr("Configuración del mapa", "Map settings"))
 
 tipo_mapa = st.sidebar.selectbox(
-    "Tipo de mapa", ["Libre", "Jerárquico LR", "Jerárquico UD"]
+    tr("Tipo de mapa", "Map type"),
+    [tr("Libre", "Free"), "Jerárquico LR", "Jerárquico UD"]
 )
+if tipo_mapa == tr("Libre", "Free"):
+    tipo_mapa = "Libre"
 
-node_distance = st.sidebar.slider("Distancia entre nodos", 150, 700, 320, 10)
-spring_length = st.sidebar.slider("Longitud de resortes", 80, 500, 260, 10)
-central_gravity = st.sidebar.slider("Gravedad central", 0.0, 1.0, 0.12, 0.01)
-physics_enabled = st.sidebar.checkbox("Activar física", True)
-show_edges = st.sidebar.checkbox("Mostrar relaciones", True)
-
-st.sidebar.markdown("---")
-st.sidebar.subheader("Vista temporal")
-show_year_in_label = st.sidebar.checkbox("Mostrar años en nodos", False)
-show_timeline = st.sidebar.checkbox("Mostrar línea de tiempo", True)
-sort_by_epoch = st.sidebar.checkbox("Ordenar conceptos por época", True)
+node_distance = st.sidebar.slider(tr("Distancia entre nodos", "Node distance"), 150, 700, 320, 10)
+spring_length = st.sidebar.slider(tr("Longitud de resortes", "Spring length"), 80, 500, 260, 10)
+central_gravity = st.sidebar.slider(tr("Gravedad central", "Central gravity"), 0.0, 1.0, 0.12, 0.01)
+physics_enabled = st.sidebar.checkbox(tr("Activar física", "Enable physics"), True)
+show_edges = st.sidebar.checkbox(tr("Mostrar relaciones", "Show relations"), True)
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("Exploración")
-st.sidebar.caption("El detalle de cada nodo aparece dentro del panel inferior del mapa al hacer click.")
+st.sidebar.subheader(tr("Vista temporal", "Timeline view"))
+show_year_in_label = st.sidebar.checkbox(tr("Mostrar años en nodos", "Show years in nodes"), False)
+show_timeline = st.sidebar.checkbox(tr("Mostrar línea de tiempo", "Show timeline"), True)
+sort_by_epoch = st.sidebar.checkbox(tr("Ordenar conceptos por época", "Sort concepts by era"), True)
+
+st.sidebar.markdown("---")
+st.sidebar.subheader(tr("Exploración", "Exploration"))
+st.sidebar.caption(tr("El detalle de cada nodo aparece dentro del panel inferior del mapa al hacer click.", "The detailed node panel appears below the map when you click a node."))
 
 # =========================================================
 # Helpers para datos
@@ -95,13 +313,15 @@ def make_container(domain, parent, label, year=None, title=None):
         "label_type": label,
     }
 
-def make_node(kind, domain, year, title, size=12, url=None, examples=None, tools=None, functions=None, tags=None, related_concepts=None, related_subareas=None):
+def make_node(kind, domain, year, title, size=12, url=None, examples=None, tools=None, functions=None, tags=None, related_concepts=None, related_subareas=None, code_example=None, title_en=None, label_en=None):
     return {
         "kind": kind,
         "domain": domain,
         "size": size,
         "year": year,
         "title": title,
+        "title_en": title_en,
+        "label_en": label_en,
         "url": url,
         "examples": examples or [],
         "tools": tools or [],
@@ -109,6 +329,7 @@ def make_node(kind, domain, year, title, size=12, url=None, examples=None, tools
         "tags": tags or [],
         "related_concepts": related_concepts or [],
         "related_subareas": related_subareas or [],
+        "code_example": code_example,
     }
 
 nodes = {}
@@ -328,6 +549,7 @@ MAIN_DOMAINS = [
     ("Cloud Computing", 2006, "Uso de infraestructura, plataformas y servicios remotos para desarrollar y operar sistemas."),
     ("Ciberseguridad", 1970, "Protección de sistemas, redes, datos y aplicaciones frente a amenazas."),
     ("Robótica e IoT", 1961, "Integración de hardware, sensores, control, conectividad e inteligencia en sistemas físicos."),
+    ("Computación Cuántica", 1980, "Paradigma de cómputo basado en qubits, superposición, entrelazamiento y puertas cuánticas."),
 ]
 
 for name, year, title in MAIN_DOMAINS:
@@ -1498,6 +1720,155 @@ add_taxonomy_branch(
     description="Integración de dispositivos con plataformas cloud y operación remota."
 )
 
+
+
+# =========================================================
+# Computación Cuántica
+# =========================================================
+add_taxonomy_branch(
+    "Computación Cuántica",
+    "Fundamentos Cuánticos",
+    concept_items=[
+        {"name": "qubit", "title": "Unidad básica de información cuántica.", "title_en": "Basic unit of quantum information.", "year": 1980},
+        {"name": "superposición", "title": "Capacidad de un estado cuántico para existir en múltiples amplitudes a la vez.", "title_en": "Capability of a quantum state to exist in multiple amplitudes at once."},
+        {"name": "entrelazamiento", "title": "Correlación cuántica no clásica entre sistemas.", "title_en": "Non-classical quantum correlation between systems."},
+        {"name": "interferencia", "title": "Combinación de amplitudes que refuerzan o cancelan probabilidades.", "title_en": "Combination of amplitudes that reinforce or cancel probabilities."},
+        {"name": "medición cuántica", "title": "Proceso de colapso probabilístico del estado cuántico.", "title_en": "Probabilistic collapse of a quantum state during measurement."},
+    ],
+    tool_items=[
+        {"name": "IBM Quantum Composer", "title": "Entorno visual para construir circuitos cuánticos.", "title_en": "Visual environment to build quantum circuits.", "year": 2019, "url": "https://quantum.ibm.com/"},
+        {"name": "Quirk", "title": "Simulador visual de circuitos cuánticos en el navegador.", "title_en": "Browser-based visual quantum circuit simulator.", "year": 2016, "url": "https://algassert.com/quirk"},
+    ],
+    lib_items=[
+        {"name": "Qiskit", "title": "SDK principal para circuitos y algoritmos cuánticos.", "title_en": "Main SDK for quantum circuits and algorithms.", "year": 2017, "url": "https://qiskit.org/"},
+        {"name": "Cirq", "title": "Framework para construir y simular circuitos cuánticos.", "title_en": "Framework to build and simulate quantum circuits.", "year": 2018, "url": "https://quantumai.google/cirq"},
+    ],
+    resource_items=[
+        {"name": "IBM Quantum Learning", "title": "Ruta de aprendizaje oficial de IBM Quantum.", "title_en": "Official IBM Quantum learning path.", "url": "https://learning.quantum.ibm.com/"},
+        {"name": "Qiskit Docs", "title": "Documentación oficial de Qiskit.", "title_en": "Official Qiskit documentation.", "url": "https://docs.quantum.ibm.com/"},
+    ],
+    dataset_items=[
+        {"name": "OpenQASM examples", "title": "Ejemplos y circuitos de referencia en OpenQASM.", "title_en": "Reference examples and circuits in OpenQASM."},
+    ],
+    year=1980,
+    description="Conceptos base para comprender el cómputo cuántico y la representación de información en qubits."
+)
+
+add_taxonomy_branch(
+    "Computación Cuántica",
+    "Circuitos y Puertas Cuánticas",
+    concept_items=[
+        {"name": "puertas cuánticas", "title": "Operaciones unitarias sobre qubits.", "title_en": "Unitary operations applied to qubits."},
+        {"name": "circuitos cuánticos", "title": "Secuencias de puertas y mediciones.", "title_en": "Sequences of gates and measurements."},
+        {"name": "Hadamard", "title": "Puerta que crea superposición balanceada.", "title_en": "Gate that creates balanced superposition."},
+        {"name": "Pauli-X", "title": "Puerta equivalente a un NOT cuántico.", "title_en": "Gate equivalent to a quantum NOT."},
+        {"name": "CNOT", "title": "Puerta de control importante para entrelazamiento.", "title_en": "Controlled gate important for entanglement."},
+        {"name": "esfera de Bloch", "title": "Representación geométrica del estado de un qubit.", "title_en": "Geometric representation of a qubit state."},
+    ],
+    tool_items=[
+        {"name": "IBM Quantum Lab", "title": "Entorno cloud para ejecutar notebooks cuánticos.", "title_en": "Cloud environment to run quantum notebooks.", "year": 2019, "url": "https://quantum.ibm.com/"},
+    ],
+    lib_items=[
+        {"name": "Qiskit Circuit Library", "title": "Colección de componentes reutilizables para circuitos.", "title_en": "Reusable building blocks for circuits.", "year": 2020, "url": "https://docs.quantum.ibm.com/api/qiskit/circuit_library"},
+        {"name": "Cirq Gates", "title": "Colección de puertas y abstracciones de circuitos en Cirq.", "title_en": "Gate collection and circuit abstractions in Cirq.", "year": 2018, "url": "https://quantumai.google/cirq"},
+    ],
+    resource_items=[
+        {"name": "OpenQASM", "title": "Lenguaje intermedio para circuitos cuánticos.", "title_en": "Intermediate language for quantum circuits.", "url": "https://openqasm.com/"},
+        {"name": "Quantum circuit tutorials", "title": "Tutoriales introductorios de circuitos cuánticos.", "title_en": "Introductory quantum circuit tutorials."},
+    ],
+    dataset_items=[
+        {"name": "QASMBench", "title": "Colección de circuitos benchmark para compiladores y hardware cuántico.", "title_en": "Benchmark circuit collection for quantum compilers and hardware.", "url": "https://www.gitlink.org.cn/scnc/QASMBench"},
+    ],
+    year=1995,
+    description="Construcción de circuitos, compuertas y representaciones del estado cuántico."
+)
+
+add_taxonomy_branch(
+    "Computación Cuántica",
+    "Algoritmos Cuánticos",
+    concept_items=[
+        {"name": "Grover", "title": "Algoritmo de búsqueda con ventaja cuadrática.", "title_en": "Search algorithm with quadratic speedup."},
+        {"name": "Shor", "title": "Algoritmo cuántico de factorización.", "title_en": "Quantum factoring algorithm."},
+        {"name": "QFT", "title": "Transformada Cuántica de Fourier.", "title_en": "Quantum Fourier Transform."},
+        {"name": "VQE", "title": "Algoritmo variacional para química cuántica.", "title_en": "Variational algorithm for quantum chemistry."},
+        {"name": "QAOA", "title": "Algoritmo variacional para optimización aproximada.", "title_en": "Variational algorithm for approximate optimization."},
+    ],
+    tool_items=[
+        {"name": "IBM Runtime", "title": "Ejecución administrada de programas cuánticos en IBM.", "title_en": "Managed execution of quantum programs on IBM.", "year": 2021, "url": "https://quantum.ibm.com/"},
+        {"name": "Azure Quantum", "title": "Plataforma de acceso a hardware y servicios cuánticos.", "title_en": "Access platform for quantum hardware and services.", "year": 2021, "url": "https://azure.microsoft.com/en-us/products/quantum"},
+    ],
+    lib_items=[
+        {"name": "Qiskit Algorithms", "title": "Módulos para algoritmos cuánticos clásicos y variacionales.", "title_en": "Modules for classical, quantum and variational algorithms.", "year": 2023, "url": "https://qiskit-community.github.io/qiskit-algorithms/"},
+        {"name": "D-Wave Ocean", "title": "SDK para annealing cuántico y optimización.", "title_en": "SDK for quantum annealing and optimization.", "year": 2018, "url": "https://docs.ocean.dwavesys.com/"},
+    ],
+    resource_items=[
+        {"name": "Quantum algorithm zoo", "title": "Colección de algoritmos cuánticos.", "title_en": "Collection of quantum algorithms.", "url": "https://quantumalgorithmzoo.org/"},
+        {"name": "Qiskit algorithms docs", "title": "Documentación de algoritmos en Qiskit.", "title_en": "Qiskit algorithm documentation.", "url": "https://qiskit-community.github.io/qiskit-algorithms/"},
+    ],
+    dataset_items=[
+        {"name": "benchmark circuits", "title": "Circuitos de referencia para evaluar algoritmos y hardware.", "title_en": "Reference circuits to evaluate algorithms and hardware."},
+    ],
+    year=1994,
+    description="Algoritmos icónicos y variacionales usados en búsqueda, factorización, optimización y simulación."
+)
+
+add_taxonomy_branch(
+    "Computación Cuántica",
+    "Machine Learning Cuántico",
+    concept_items=[
+        {"name": "circuitos variacionales", "title": "Modelos paramétricos entrenables basados en circuitos.", "title_en": "Trainable parametric models based on circuits."},
+        {"name": "quantum kernels", "title": "Kernels derivados de mapas de características cuánticos.", "title_en": "Kernels derived from quantum feature maps."},
+        {"name": "modelos híbridos", "title": "Arquitecturas que combinan componentes clásicos y cuánticos.", "title_en": "Architectures that combine classical and quantum components."},
+        {"name": "codificación de datos", "title": "Estrategias para incrustar datos clásicos en estados cuánticos.", "title_en": "Strategies to embed classical data into quantum states."},
+    ],
+    tool_items=[
+        {"name": "PennyLane demos", "title": "Colección práctica de ejemplos de QML.", "title_en": "Practical collection of QML examples.", "year": 2020, "url": "https://pennylane.ai/qml/demonstrations"},
+    ],
+    lib_items=[
+        {"name": "PennyLane", "title": "Framework para computación cuántica diferenciable.", "title_en": "Framework for differentiable quantum computing.", "year": 2018, "url": "https://pennylane.ai/"},
+        {"name": "Qiskit Machine Learning", "title": "Módulos de aprendizaje automático sobre Qiskit.", "title_en": "Machine learning modules built on Qiskit.", "year": 2021, "url": "https://qiskit-community.github.io/qiskit-machine-learning/"},
+        {"name": "TorchQuantum", "title": "Framework experimental para QML con PyTorch.", "title_en": "Experimental framework for QML with PyTorch.", "year": 2022, "url": "https://github.com/mit-han-lab/torchquantum"},
+    ],
+    resource_items=[
+        {"name": "PennyLane docs", "title": "Documentación oficial de PennyLane.", "title_en": "Official PennyLane documentation.", "url": "https://docs.pennylane.ai/"},
+        {"name": "QML papers", "title": "Papers y recursos sobre quantum machine learning.", "title_en": "Papers and resources about quantum machine learning."},
+    ],
+    dataset_items=[
+        {"name": "Iris QML", "title": "Uso clásico de Iris como benchmark pedagógico en QML.", "title_en": "Classic Iris benchmark used for educational QML workflows."},
+    ],
+    year=2018,
+    description="Uso de circuitos y kernels cuánticos en problemas de aprendizaje automático."
+)
+
+add_taxonomy_branch(
+    "Computación Cuántica",
+    "Hardware y Ecosistema Cuántico",
+    concept_items=[
+        {"name": "qubits superconductores", "title": "Tecnología de hardware basada en circuitos superconductores.", "title_en": "Hardware technology based on superconducting circuits."},
+        {"name": "iones atrapados", "title": "Plataforma de hardware basada en iones controlados electromagnéticamente.", "title_en": "Hardware platform based on electromagnetically controlled ions."},
+        {"name": "annealing", "title": "Paradigma de optimización cuántica basado en annealing.", "title_en": "Quantum optimization paradigm based on annealing."},
+        {"name": "NISQ", "title": "Era de dispositivos cuánticos ruidosos de escala intermedia.", "title_en": "Noisy intermediate-scale quantum era."},
+        {"name": "mitigación de errores", "title": "Técnicas para reducir el impacto del ruido.", "title_en": "Techniques to reduce the impact of noise."},
+    ],
+    tool_items=[
+        {"name": "IBM Quantum", "title": "Acceso a hardware cuántico superconductivo.", "title_en": "Access to superconducting quantum hardware.", "year": 2016, "url": "https://quantum.ibm.com/"},
+        {"name": "D-Wave Leap", "title": "Plataforma cloud para annealing cuántico.", "title_en": "Cloud platform for quantum annealing.", "year": 2018, "url": "https://cloud.dwavesys.com/leap/"},
+        {"name": "Azure Quantum Workspace", "title": "Espacio de trabajo para proveedores y simuladores cuánticos.", "title_en": "Workspace for quantum providers and simulators.", "year": 2021, "url": "https://azure.microsoft.com/en-us/products/quantum"},
+    ],
+    lib_items=[
+        {"name": "Qiskit Runtime", "title": "Servicios de ejecución optimizada para IBM Quantum.", "title_en": "Optimized execution services for IBM Quantum.", "year": 2022, "url": "https://docs.quantum.ibm.com/run"},
+    ],
+    resource_items=[
+        {"name": "Azure Quantum docs", "title": "Documentación oficial de Azure Quantum.", "title_en": "Official Azure Quantum documentation.", "url": "https://learn.microsoft.com/azure/quantum/"},
+        {"name": "D-Wave docs", "title": "Documentación oficial de D-Wave.", "title_en": "Official D-Wave documentation.", "url": "https://docs.dwavesys.com/"},
+    ],
+    dataset_items=[
+        {"name": "hardware calibration data", "title": "Métricas y calibraciones de dispositivos cuánticos.", "title_en": "Metrics and calibrations from quantum devices."},
+    ],
+    year=2015,
+    description="Panorama de plataformas, hardware, ruido, ejecución y ecosistema cuántico."
+)
+
 # =========================================================
 # Relaciones adicionales entre ramas
 # =========================================================
@@ -1513,86 +1884,283 @@ cross_links = [
     ("Comunicación y Redes IoT", "Cloud Computing"),
     ("Python", "Inteligencia Artificial"),
     ("Python", "Desarrollo de Aplicaciones"),
+    ("Machine Learning Cuántico", "Inteligencia Artificial"),
+    ("Algoritmos Cuánticos", "Cloud Computing"),
+    ("Computación Cuántica", "Ingeniería de Software"),
 ]
 for src, dst in cross_links:
     if src in nodes and dst in nodes:
         add_edge(src, dst, "relaciona")
 
 # =========================================================
+# Funciones de librerías y agrupación visual
+# =========================================================
+LIBRARY_FUNCTION_CATALOG = {
+    "Streamlit": [
+        {"name": "st.title", "description": "Muestra un título principal en la app.", "code": "import streamlit as st\nst.title('Demo')"},
+        {"name": "st.write", "description": "Renderiza texto, tablas u objetos de forma flexible.", "code": "st.write('Hola mundo')"},
+        {"name": "st.selectbox", "description": "Crea un selector desplegable.", "code": "option = st.selectbox('Choose', ['A', 'B'])"},
+    ],
+    "NumPy": [
+        {"name": "np.array", "description": "Crea arreglos multidimensionales.", "code": "import numpy as np\na = np.array([1, 2, 3])"},
+        {"name": "np.mean", "description": "Calcula el promedio de un arreglo.", "code": "np.mean([1, 2, 3])"},
+        {"name": "np.dot", "description": "Producto punto o multiplicación matricial básica.", "code": "np.dot([1, 2], [3, 4])"},
+    ],
+    "Matplotlib": [
+        {"name": "plt.plot", "description": "Genera un gráfico de líneas.", "code": "import matplotlib.pyplot as plt\nplt.plot([1,2,3],[2,4,6])"},
+        {"name": "plt.scatter", "description": "Genera un gráfico de dispersión.", "code": "plt.scatter([1,2,3],[2,4,6])"},
+    ],
+    "pandas": [
+        {"name": "pd.DataFrame", "description": "Crea una tabla etiquetada.", "code": "import pandas as pd\ndf = pd.DataFrame({'a':[1,2]})"},
+        {"name": "pd.read_csv", "description": "Lee archivos CSV.", "code": "df = pd.read_csv('data.csv')"},
+        {"name": "df.groupby", "description": "Agrupa datos para agregaciones.", "code": "df.groupby('category').sum()"},
+    ],
+    "spaCy": [
+        {"name": "spacy.load", "description": "Carga un modelo de lenguaje.", "code": "import spacy\nnlp = spacy.load('en_core_web_sm')"},
+        {"name": "nlp.pipe", "description": "Procesa múltiples textos eficientemente.", "code": "docs = list(nlp.pipe(['hello', 'world']))"},
+    ],
+    "Transformers Library": [
+        {"name": "pipeline", "description": "Interfaz de alto nivel para tareas comunes.", "code": "from transformers import pipeline\nclf = pipeline('sentiment-analysis')"},
+        {"name": "AutoTokenizer", "description": "Carga el tokenizador adecuado para un modelo.", "code": "from transformers import AutoTokenizer\ntok = AutoTokenizer.from_pretrained('bert-base-uncased')"},
+        {"name": "AutoModel", "description": "Carga un modelo preentrenado genérico.", "code": "from transformers import AutoModel\nmodel = AutoModel.from_pretrained('bert-base-uncased')"},
+    ],
+    "FastAPI": [
+        {"name": "FastAPI", "description": "Instancia principal de la aplicación.", "code": "from fastapi import FastAPI\napp = FastAPI()"},
+        {"name": "@app.get", "description": "Declara un endpoint GET.", "code": "@app.get('/hello')\ndef hello():\n    return {'msg': 'hi'}"},
+        {"name": "Depends", "description": "Inyección de dependencias.", "code": "from fastapi import Depends"},
+    ],
+    "OpenCV": [
+        {"name": "cv2.imread", "description": "Lee una imagen desde disco.", "code": "import cv2\nimg = cv2.imread('image.jpg')"},
+        {"name": "cv2.resize", "description": "Redimensiona una imagen.", "code": "resized = cv2.resize(img, (224, 224))"},
+    ],
+    "scikit-learn": [
+        {"name": "fit", "description": "Entrena el modelo con datos.", "code": "model.fit(X_train, y_train)"},
+        {"name": "predict", "description": "Predice etiquetas o valores.", "code": "pred = model.predict(X_test)"},
+        {"name": "transform", "description": "Transforma datos mediante un estimador.", "code": "X_scaled = scaler.transform(X_test)"},
+    ],
+    "XGBoost": [
+        {"name": "fit", "description": "Entrena un modelo boosting.", "code": "model.fit(X_train, y_train)"},
+        {"name": "predict", "description": "Predice con el modelo entrenado.", "code": "pred = model.predict(X_test)"},
+    ],
+    "LightGBM": [
+        {"name": "fit", "description": "Entrena un modelo LightGBM.", "code": "model.fit(X_train, y_train)"},
+        {"name": "predict", "description": "Predice con el modelo entrenado.", "code": "pred = model.predict(X_test)"},
+    ],
+    "PyTorch": [
+        {"name": "nn.Module", "description": "Clase base para modelos en PyTorch.", "code": "import torch.nn as nn\nclass Net(nn.Module):\n    pass"},
+        {"name": "forward", "description": "Define el flujo directo del modelo.", "code": "def forward(self, x):\n    return x"},
+        {"name": "optimizer.step", "description": "Actualiza los parámetros del modelo.", "code": "optimizer.step()"},
+    ],
+    "TensorFlow": [
+        {"name": "tf.keras.Sequential", "description": "Crea un modelo secuencial.", "code": "import tensorflow as tf\nmodel = tf.keras.Sequential([])"},
+        {"name": "model.fit", "description": "Entrena el modelo.", "code": "model.fit(X_train, y_train, epochs=5)"},
+    ],
+    "Keras": [
+        {"name": "Sequential", "description": "Modelo de capas apiladas.", "code": "from keras import Sequential\nmodel = Sequential()"},
+        {"name": "Dense", "description": "Capa densa totalmente conectada.", "code": "from keras.layers import Dense\nDense(64, activation='relu')"},
+    ],
+    "YOLO": [
+        {"name": "model.predict", "description": "Ejecuta inferencia sobre imágenes o video.", "code": "from ultralytics import YOLO\nmodel = YOLO('yolov8n.pt')\nresults = model.predict('image.jpg')"},
+        {"name": "model.train", "description": "Entrena o reajusta un modelo YOLO.", "code": "model.train(data='coco128.yaml', epochs=10)"},
+    ],
+    "Plotly": [
+        {"name": "px.line", "description": "Genera líneas rápidas con Plotly Express.", "code": "import plotly.express as px\nfig = px.line(df, x='x', y='y')"},
+        {"name": "px.scatter", "description": "Genera dispersión interactiva.", "code": "fig = px.scatter(df, x='x', y='y')"},
+    ],
+    "SciPy": [
+        {"name": "scipy.optimize.minimize", "description": "Minimiza funciones objetivo.", "code": "from scipy.optimize import minimize\nres = minimize(func, x0=[0.0])"},
+    ],
+    "statsmodels": [
+        {"name": "OLS", "description": "Modelo de regresión lineal clásica.", "code": "import statsmodels.api as sm\nmodel = sm.OLS(y, X).fit()"},
+    ],
+    "MLflow SDK": [
+        {"name": "mlflow.start_run", "description": "Abre un experimento rastreable.", "code": "import mlflow\nwith mlflow.start_run():\n    mlflow.log_param('lr', 0.01)"},
+        {"name": "mlflow.log_metric", "description": "Registra métricas de entrenamiento.", "code": "mlflow.log_metric('accuracy', 0.95)"},
+    ],
+    "Feast": [
+        {"name": "FeatureStore", "description": "Accede a un feature store.", "code": "from feast import FeatureStore\nstore = FeatureStore('.')"},
+    ],
+    "BentoML": [
+        {"name": "bentoml.service", "description": "Declara un servicio de inferencia.", "code": "import bentoml\n@bentoml.service\nclass MyService: pass"},
+    ],
+    "Evidently": [
+        {"name": "Report", "description": "Construye reportes de calidad y drift.", "code": "from evidently.report import Report\nreport = Report(metrics=[])"},
+    ],
+    "SQLAlchemy": [
+        {"name": "create_engine", "description": "Crea una conexión a base de datos.", "code": "from sqlalchemy import create_engine\nengine = create_engine('sqlite:///db.sqlite3')"},
+        {"name": "Session", "description": "Gestiona sesiones ORM.", "code": "from sqlalchemy.orm import Session"},
+    ],
+    "pymongo": [
+        {"name": "MongoClient", "description": "Crea un cliente para MongoDB.", "code": "from pymongo import MongoClient\nclient = MongoClient('mongodb://localhost:27017')"},
+    ],
+    "Qiskit": [
+        {"name": "QuantumCircuit", "description": "Construye circuitos cuánticos.", "code": "from qiskit import QuantumCircuit\nqc = QuantumCircuit(2, 2)"},
+        {"name": "transpile", "description": "Compila un circuito para un backend.", "code": "from qiskit import transpile\ncompiled = transpile(qc, backend)"},
+    ],
+    "Cirq": [
+        {"name": "Circuit", "description": "Construye circuitos en Cirq.", "code": "import cirq\nq = cirq.LineQubit.range(2)\ncircuit = cirq.Circuit(cirq.H(q[0]))"},
+    ],
+    "PennyLane": [
+        {"name": "qml.qnode", "description": "Convierte una función cuántica en un nodo ejecutable.", "code": "import pennylane as qml\n@qml.qnode(dev)\ndef circuit(x):\n    return qml.expval(qml.Z(0))"},
+        {"name": "qml.StronglyEntanglingLayers", "description": "Plantilla común para circuitos variacionales.", "code": "qml.StronglyEntanglingLayers(weights, wires=[0,1])"},
+    ],
+    "Qiskit Machine Learning": [
+        {"name": "QSVC", "description": "Clasificador basado en kernels cuánticos.", "code": "from qiskit_machine_learning.algorithms import QSVC"},
+    ],
+    "Qiskit Algorithms": [
+        {"name": "VQE", "description": "Implementación variacional para encontrar energías mínimas.", "code": "from qiskit_algorithms import VQE"},
+        {"name": "QAOA", "description": "Implementación de optimización aproximada cuántica.", "code": "from qiskit_algorithms import QAOA"},
+    ],
+    "D-Wave Ocean": [
+        {"name": "EmbeddingComposite", "description": "Prepara problemas para hardware annealing.", "code": "from dwave.system import EmbeddingComposite"},
+    ],
+    "Qiskit Runtime": [
+        {"name": "Sampler", "description": "Primitive de ejecución para muestrear circuitos.", "code": "from qiskit_ibm_runtime import Sampler"},
+    ],
+}
+
+def build_generic_function_entry(lib_name, fn_name):
+    return {
+        "name": fn_name,
+        "description": f"{fn_name} es una función o componente clave dentro de {lib_name}.",
+        "code": f"# Example with {lib_name}\n{fn_name}(...)",
+    }
+
+def add_library_function_nodes(graph_nodes, graph_edges):
+    new_nodes = dict(graph_nodes)
+    new_edges = list(graph_edges)
+
+    for lib_name, attrs in list(graph_nodes.items()):
+        if attrs.get("kind") not in {"libreria", "framework"}:
+            continue
+
+        catalog = LIBRARY_FUNCTION_CATALOG.get(lib_name, [])
+        if not catalog and attrs.get("functions"):
+            catalog = [build_generic_function_entry(lib_name, fn_name) for fn_name in attrs.get("functions", [])[:3]]
+
+        for entry in catalog:
+            fn_node_name = f"{lib_name} :: {entry['name']}"
+            if fn_node_name not in new_nodes:
+                new_nodes[fn_node_name] = make_node(
+                    "funcion",
+                    attrs.get("domain", "General"),
+                    attrs.get("year"),
+                    entry["description"],
+                    size=9,
+                    url=attrs.get("url"),
+                    examples=[
+                        tr("Uso típico dentro de la librería.", "Typical usage inside the library."),
+                        tr("Se puede estudiar junto con el código de ejemplo del panel.", "It can be studied together with the code example in the panel."),
+                    ],
+                    tags=merge_unique_list(attrs.get("tags", []), [fn_node_name]),
+                    related_concepts=attrs.get("related_concepts", []),
+                    related_subareas=attrs.get("related_subareas", []),
+                    code_example=entry.get("code"),
+                )
+                new_nodes[fn_node_name]["label"] = entry["name"]
+                new_nodes[fn_node_name]["label_en"] = entry["name"]
+            edge = (canonical_name(lib_name), canonical_name(fn_node_name), "función")
+            if edge not in new_edges:
+                new_edges.append(edge)
+
+    return new_nodes, new_edges
+
+def add_similarity_cluster_edges(G):
+    H = G.copy()
+    grouped = defaultdict(list)
+    for node_name, attrs in H.nodes(data=True):
+        kind = attrs.get("kind")
+        if kind not in {"libreria", "herramienta", "recurso", "dataset"}:
+            continue
+        for sub in attrs.get("related_subareas", []):
+            grouped[(sub, kind)].append(node_name)
+
+    for (_sub, _kind), items in grouped.items():
+        items = sorted(set(items))
+        for left, right in zip(items, items[1:]):
+            if not H.has_edge(left, right):
+                H.add_edge(left, right, relation="cluster", hidden=True, cluster=True)
+    return H
+
+# =========================================================
 # Utilidades del grafo
 # =========================================================
 
 def enrich_title(name, attrs):
-    display_name = attrs.get("label", name)
+    display_name = translate_name(attrs.get("label", name))
     lines = [f"{display_name}"]
     if attrs.get("kind"):
-        lines.append(f"Tipo: {attrs['kind']}")
+        lines.append(f"{tr('Tipo', 'Type')}: {translate_kind(attrs['kind'])}")
     if attrs.get("domain"):
-        lines.append(f"Dominio: {attrs['domain']}")
+        lines.append(f"{tr('Dominio', 'Domain')}: {translate_name(attrs['domain'])}")
     if attrs.get("year"):
-        lines.append(f"Año: {attrs['year']}")
-    if attrs.get("title"):
+        lines.append(f"{tr('Año', 'Year')}: {attrs['year']}")
+    title_value = node_title(attrs)
+    if title_value:
         lines.append("")
-        lines.append(attrs["title"])
+        lines.append(title_value)
 
     if attrs.get("related_subareas"):
         lines.append("")
-        lines.append("Subáreas relacionadas:")
-        lines.append(", ".join(attrs["related_subareas"][:6]))
+        lines.append(tr("Subáreas relacionadas:", "Related subareas:"))
+        lines.append(", ".join(translate_name(v) for v in attrs["related_subareas"][:6]))
     if attrs.get("related_concepts"):
         lines.append("")
-        lines.append("Conceptos relacionados:")
-        lines.append(", ".join(attrs["related_concepts"][:8]))
+        lines.append(tr("Conceptos relacionados:", "Related concepts:"))
+        lines.append(", ".join(translate_name(v) for v in attrs["related_concepts"][:8]))
 
     if attrs.get("examples"):
         lines.append("")
-        lines.append("Ejemplos:")
+        lines.append(tr("Ejemplos:", "Examples:"))
         for ex in attrs["examples"][:4]:
             lines.append(f"- {ex}")
 
     if attrs.get("functions"):
         lines.append("")
-        lines.append("Funciones clave:")
+        lines.append(tr("Funciones clave:", "Key functions:"))
         lines.append(", ".join(attrs["functions"]))
     if attrs.get("url"):
         lines.append("")
-        lines.append(f"Recurso: {attrs['url']}")
+        lines.append(tr("Abrir enlace desde el panel inferior o con doble click.", "Open the link from the lower panel or with double click."))
     return "\n".join(lines)
 
 def build_detail_html(name, attrs):
     def esc(v):
         return html.escape(str(v))
 
-    display_name = attrs.get("label", name)
+    display_name = translate_name(attrs.get("label", name))
     parts = [f"<h3 style='margin:0 0 8px 0'>{esc(display_name)}</h3>"]
     meta = []
     if attrs.get("kind"):
-        meta.append(f"<b>Tipo:</b> {esc(attrs['kind'])}")
+        meta.append(f"<b>{esc(tr('Tipo', 'Type'))}:</b> {esc(translate_kind(attrs['kind']))}")
     if attrs.get("domain"):
-        meta.append(f"<b>Dominio:</b> {esc(attrs['domain'])}")
+        meta.append(f"<b>{esc(tr('Dominio', 'Domain'))}:</b> {esc(translate_name(attrs['domain']))}")
     if attrs.get("year"):
-        meta.append(f"<b>Año:</b> {esc(attrs['year'])}")
+        meta.append(f"<b>{esc(tr('Año', 'Year'))}:</b> {esc(attrs['year'])}")
     if meta:
         parts.append("<p style='margin:0 0 10px 0'>" + " | ".join(meta) + "</p>")
-    if attrs.get("title"):
-        parts.append(f"<p style='margin:0 0 12px 0'>{esc(attrs['title'])}</p>")
+    title_value = node_title(attrs)
+    if title_value:
+        parts.append(f"<p style='margin:0 0 12px 0'>{esc(title_value)}</p>")
 
     if attrs.get("related_subareas"):
-        parts.append("<p><b>Subáreas relacionadas:</b> " + esc(", ".join(attrs["related_subareas"])) + "</p>")
+        parts.append("<p><b>" + esc(tr("Subáreas relacionadas", "Related subareas")) + ":</b> " + esc(", ".join(translate_name(v) for v in attrs["related_subareas"])) + "</p>")
     if attrs.get("related_concepts"):
-        parts.append("<p><b>Conceptos relacionados:</b> " + esc(", ".join(attrs["related_concepts"])) + "</p>")
+        parts.append("<p><b>" + esc(tr("Conceptos relacionados", "Related concepts")) + ":</b> " + esc(", ".join(translate_name(v) for v in attrs["related_concepts"])) + "</p>")
 
     if attrs.get("examples"):
-        parts.append("<div style='margin-top:10px'><b>Ejemplos o usos típicos</b><ul>")
+        parts.append("<div style='margin-top:10px'><b>" + esc(tr("Ejemplos o usos típicos", "Examples or common uses")) + "</b><ul>")
         for ex in attrs["examples"]:
             parts.append(f"<li>{esc(ex)}</li>")
         parts.append("</ul></div>")
 
     if attrs.get("functions"):
-        parts.append(f"<p><b>Funciones principales:</b> {esc(', '.join(attrs['functions']))}</p>")
+        parts.append(f"<p><b>{esc(tr('Funciones principales', 'Main functions'))}:</b> {esc(', '.join(attrs['functions']))}</p>")
+    if attrs.get("code_example"):
+        parts.append(f"<div style='margin-top:10px'><b>{esc(tr('Ejemplo de código', 'Code example'))}</b><pre style='white-space:pre-wrap;background:#f4f4f4;padding:10px;border-radius:8px;overflow:auto'>{esc(attrs['code_example'])}</pre></div>")
     if attrs.get("url"):
         url = esc(attrs["url"])
-        parts.append(f"<p><a href='{url}' target='_blank'>Ver más / profundizar en el tema</a></p>")
+        parts.append(f"<p><a href='{url}' target='_blank' rel='noopener noreferrer'>{esc(tr('Ver más / profundizar en el tema', 'Learn more / go deeper'))}</a></p>")
 
     return "".join(parts)
 
@@ -1602,13 +2170,14 @@ def build_graph(graph_nodes, graph_edges):
         attrs = dict(attrs)
         attrs["full_title"] = enrich_title(name, attrs)
         attrs["detail_html"] = build_detail_html(name, attrs)
+        attrs["label"] = translate_name(attrs.get("label", name))
         G.add_node(name, **attrs)
     for src, dst, rel in graph_edges:
         if src in graph_nodes and dst in graph_nodes:
             G.add_edge(src, dst, relation=rel)
     return G
 
-def filter_graph(G, selected_kinds, selected_domains):
+def filter_graph(G, selected_kinds, selected_domains, selected_subareas):
     H = G.copy()
     remove_nodes = []
     for n, attrs in H.nodes(data=True):
@@ -1618,6 +2187,11 @@ def filter_graph(G, selected_kinds, selected_domains):
         if selected_domains and attrs.get("domain") not in selected_domains:
             remove_nodes.append(n)
             continue
+        if selected_subareas:
+            rel_subareas = attrs.get("related_subareas", [])
+            if not set(rel_subareas).intersection(set(selected_subareas)) and attrs.get("kind") != "principal":
+                remove_nodes.append(n)
+                continue
     H.remove_nodes_from(remove_nodes)
     return H
 
@@ -1628,11 +2202,11 @@ def create_timeline_df(graph_nodes):
         if year is None:
             continue
         rows.append({
-            "Concepto": name,
-            "Tipo": attrs.get("kind", ""),
-            "Dominio": attrs.get("domain", ""),
+            "Concepto": translate_name(name),
+            "Tipo": translate_kind(attrs.get("kind", "")),
+            "Dominio": translate_name(attrs.get("domain", "")),
             "Año": year,
-            "Descripción": attrs.get("title", ""),
+            "Descripción": node_title(attrs),
         })
     df = pd.DataFrame(rows)
     if df.empty:
@@ -1646,10 +2220,10 @@ def inject_click_behavior(html_path):
     with open(html_path, "r", encoding="utf-8") as f:
         html_content = f.read()
 
-    detail_panel = """
+    detail_panel = f"""
 <div id="selected-node-panel" style="margin-top:16px;padding:14px;border:1px solid #ddd;border-radius:12px;background:#fafafa;font-family:Arial, sans-serif;">
-  <div style="font-weight:700;margin-bottom:8px;">Detalle del nodo</div>
-  <div id="selected-node-content" style="color:#333;">Haz click sobre un nodo para ver aquí su descripción ampliada, usos, funciones principales y enlaces.</div>
+  <div style="font-weight:700;margin-bottom:8px;">{tr('Detalle del nodo', 'Node details')}</div>
+  <div id="selected-node-content" style="color:#333;">{tr('Haz click sobre un nodo para ver aquí su descripción ampliada, usos, funciones principales y enlaces. Haz doble click para abrir el recurso principal del nodo.', 'Click a node to see its detailed description, uses, key functions and links here. Double click to open the main node resource.')}</div>
 </div>
 """
 
@@ -1661,10 +2235,10 @@ function waitForNetwork() {
     return;
   }
 
-  function setPanel(html) {
+  function setPanel(contentHtml) {
     const panel = document.getElementById("selected-node-content");
     if (panel) {
-      panel.innerHTML = html;
+      panel.innerHTML = contentHtml;
     }
   }
 
@@ -1676,6 +2250,15 @@ function waitForNetwork() {
       setPanel(node.detail_html);
     } else if (node && node.title) {
       setPanel("<pre style='white-space:pre-wrap;font-family:Arial,sans-serif;'>" + node.title + "</pre>");
+    }
+  });
+
+  network.on("doubleClick", function(params) {
+    if (!params.nodes || params.nodes.length === 0) return;
+    const nodeId = params.nodes[0];
+    const node = nodes.get(nodeId);
+    if (node && node.url) {
+      window.open(node.url, "_blank");
     }
   });
 }
@@ -1701,9 +2284,9 @@ def render_graph(G):
         base_color = TYPE_COLOR_OVERRIDES.get(kind, DOMAIN_COLORS.get(domain, DOMAIN_COLORS["General"]))
         style = KIND_STYLES.get(kind, KIND_STYLES["concepto"])
         size = max(8, attrs.get("size", 12) + style.get("size_boost", 0))
-        label = attrs.get("label", name)
+        label = attrs.get("label", translate_name(name))
         if show_year_in_label and attrs.get("year"):
-            label = f"{name} ({attrs['year']})"
+            label = f"{translate_name(name)} ({attrs['year']})"
         net.add_node(
             name,
             label=label,
@@ -1717,7 +2300,10 @@ def render_graph(G):
 
     for src, dst, edge_attrs in G.edges(data=True):
         title = edge_attrs.get("relation", "")
-        net.add_edge(src, dst, title=title)
+        if edge_attrs.get("hidden"):
+            net.add_edge(src, dst, title=title, hidden=True, physics=True, color="rgba(0,0,0,0)")
+        else:
+            net.add_edge(src, dst, title=title)
 
     options = {
         "nodes": {
@@ -1798,59 +2384,75 @@ G_filtered = filter_graph(G_full, selected_kinds, selected_domains)
 # =========================================================
 # Layout principal
 # =========================================================
-left_col, right_col = st.columns([3.6, 1.2], gap="large")
+if show_right_panel:
+    left_col, right_col = st.columns([4.3, 1.2], gap="large")
+else:
+    left_col, right_col = st.container(), None
 
 with left_col:
-    st.subheader("Mapa visual")
+    st.subheader(tr("Mapa visual", "Visual map"))
     st.caption(
-        f"Nodos mostrados: {len(G_filtered.nodes)} | "
-        f"Relaciones: {len(G_filtered.edges)}"
+        f"{tr('Nodos mostrados', 'Displayed nodes')}: {len(G_filtered.nodes)} | "
+        f"{tr('Relaciones', 'Relations')}: {len(G_filtered.edges)}"
     )
     render_graph(G_filtered)
 
-with right_col:
-    st.subheader("Exploración rápida")
+if show_right_panel and right_col is not None:
+    with right_col:
+        st.subheader(tr("Exploración rápida", "Quick exploration"))
 
-    st.markdown("**Autores / enlaces**")
-    st.markdown(f"- [LinkedIn]({LINKEDIN_URL})")
-    st.markdown(f"- [GitHub]({GITHUB_URL})")
+        st.markdown("**" + tr("Perfil", "Profile") + "**")
+        if LINKEDIN_IMAGE_URL:
+            st.image(LINKEDIN_IMAGE_URL, width=84)
+        else:
+            st.markdown(
+                "<div style='width:84px;height:84px;border-radius:50%;background:#0A66C2;color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:28px;'>AT</div>",
+                unsafe_allow_html=True,
+            )
+        st.markdown(f"**[{LINKEDIN_DISPLAY_NAME}]({LINKEDIN_URL})**")
+        st.markdown(f"- [LinkedIn]({LINKEDIN_URL})")
+        st.markdown(f"- [GitHub]({GITHUB_URL})")
 
-    st.markdown("---")
-    st.markdown("**Leyenda de tipos**")
-    for kind in legend_kinds:
-        if kind in KIND_STYLES:
-            st.markdown(f"- **{kind}** → {KIND_STYLES[kind]['shape']}")
+        st.markdown("---")
+        st.markdown("**" + tr("Leyenda de tipos", "Node type legend") + "**")
+        for kind in legend_kinds + (["funcion"] if show_function_nodes and "funcion" in all_kinds else []):
+            if kind in KIND_STYLES:
+                st.markdown(f"- **{translate_kind(kind)}** → {KIND_STYLES[kind]['shape']}")
 
-    st.markdown("---")
-    st.markdown("**Dominios principales**")
-    for name, _, _ in MAIN_DOMAINS:
-        st.markdown(f"- `{name}`")
+        st.markdown("---")
+        st.markdown("**" + tr("Dominios principales", "Main domains") + "**")
+        for name, _, _ in MAIN_DOMAINS:
+            st.markdown(f"- `{translate_name(name)}`")
 
-    st.markdown("---")
-    st.info("El detalle ampliado aparece debajo del mapa al hacer click en un nodo. El tooltip corto sigue disponible al pasar el mouse.")
+        st.markdown("---")
+        st.info(tr(
+            "El detalle ampliado aparece debajo del mapa al hacer click en un nodo. El tooltip corto sigue disponible al pasar el mouse y el doble click abre el recurso principal si existe.",
+            "The detailed panel appears below the map when you click a node. A short tooltip remains on hover and double click opens the main resource when available."
+        ))
 
-    st.markdown("---")
-    st.markdown("**Submapas sugeridos**")
-    suggested = [
-        "Inteligencia Artificial",
-        "Machine Learning",
-        "Procesamiento de Lenguaje Natural",
-        "IA Generativa",
-        "Ingeniería de Software",
-        "Python",
-        "Cloud Computing",
-        "Ciberseguridad",
-        "Robótica e IoT",
-    ]
-    for s in suggested:
-        st.markdown(f"- `{s}`")
+        st.markdown("---")
+        st.markdown("**" + tr("Submapas sugeridos", "Suggested submaps") + "**")
+        suggested = [
+            "Inteligencia Artificial",
+            "Machine Learning",
+            "Procesamiento de Lenguaje Natural",
+            "IA Generativa",
+            "Ingeniería de Software",
+            "Python",
+            "Cloud Computing",
+            "Ciberseguridad",
+            "Robótica e IoT",
+            "Computación Cuántica",
+        ]
+        for s in suggested:
+            st.markdown(f"- `{translate_name(s)}`")
 
 # =========================================================
 # Línea de tiempo
 # =========================================================
 if show_timeline:
     st.markdown("---")
-    st.subheader("Línea de tiempo")
+    st.subheader(tr("Línea de tiempo", "Timeline"))
 
     visible_names = set(G_filtered.nodes)
     timeline_source_nodes = {k: v for k, v in graph_nodes.items() if k in visible_names}
@@ -1858,7 +2460,7 @@ if show_timeline:
     timeline_df = create_timeline_df(timeline_source_nodes)
 
     if timeline_df.empty:
-        st.warning("No hay datos suficientes para mostrar la línea de tiempo.")
+        st.warning(tr("No hay datos suficientes para mostrar la línea de tiempo.", "There is not enough data to show the timeline."))
     else:
         chart = (
             alt.Chart(timeline_df)
@@ -1874,22 +2476,22 @@ if show_timeline:
         )
         st.altair_chart(chart, use_container_width=True)
 
-        with st.expander("Ver tabla cronológica"):
+        with st.expander(tr("Ver tabla cronológica", "View chronological table")):
             st.dataframe(timeline_df, use_container_width=True)
 
 # =========================================================
 # Tabla resumen
 # =========================================================
 st.markdown("---")
-st.subheader("Resumen tabular del submapa")
+st.subheader(tr("Resumen tabular del submapa", "Submap table summary"))
 
 summary_rows = []
 for node_name in G_filtered.nodes:
     node_data = G_filtered.nodes[node_name]
     summary_rows.append({
-        "Nombre": node_name,
-        "Tipo": node_data.get("kind", ""),
-        "Dominio": node_data.get("domain", ""),
+        "Nombre": translate_name(node_name),
+        "Tipo": translate_kind(node_data.get("kind", "")),
+        "Dominio": translate_name(node_data.get("domain", "")),
         "Año": node_data.get("year", ""),
         "Descripción": node_data.get("title", ""),
         "URL": node_data.get("url", ""),
