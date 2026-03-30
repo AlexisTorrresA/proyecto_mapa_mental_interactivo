@@ -32,7 +32,7 @@ def tr(es: str, en: str) -> str:
     return en if IS_EN else es
 
 if "show_right_panel" not in st.session_state:
-    st.session_state.show_right_panel = False
+    st.session_state.show_right_panel = True
 show_right_panel = st.session_state.show_right_panel
 show_function_nodes = True
 
@@ -47,8 +47,8 @@ with top_bar[1]:
 st.title(tr("Mapa conceptual interactivo de tecnología", "Interactive Technology Concept Map"))
 st.write(
     tr(
-        "Haz click en un nodo para ver su detalle ampliado dentro del panel inferior del mapa. Usa los filtros laterales para simplificar la vista.",
-        "Click a node to see its detailed information in the panel below the map. Use the side filters to simplify the view."
+        "Haz click en un nodo para ver su detalle ampliado dentro del panel inferior del mapa. Usa los filtros superiores para simplificar la vista.",
+        "Click a node to see its detailed information in the panel below the map. Use the top filters to simplify the view."
     )
 )
 
@@ -474,7 +474,7 @@ def build_related_examples(item_kind, subarea, related):
 def make_group_name(subarea, bucket_key):
     return f"{subarea} :: {bucket_key}"
 
-def ensure_bucket_container(domain_root, subarea, bucket_key, label_es, label_en, description_es, description_en):
+def ensure_bucket_container(domain_root, subarea, bucket_key, label_es, label_en, description_es, description_en, bucket_kind=None):
     container_name = make_group_name(subarea, bucket_key)
     add_node(container_name, {
         "kind": "contenedor",
@@ -487,6 +487,8 @@ def ensure_bucket_container(domain_root, subarea, bucket_key, label_es, label_en
         "tags": [domain_root, subarea, bucket_key],
         "related_subareas": [subarea],
         "related_concepts": [subarea],
+        "bucket_key": bucket_key,
+        "bucket_kind": bucket_kind,
     })
     add_edge(subarea, container_name, tr("agrupa", "groups"))
     return container_name
@@ -683,6 +685,7 @@ python_libraries_container = ensure_bucket_container(
     "Libraries",
     "Agrupa las principales librerías del ecosistema Python usadas en el mapa.",
     "Groups the main Python ecosystem libraries used in the map.",
+    bucket_kind="libreria",
 )
 
 for lib in python_libraries:
@@ -2061,6 +2064,74 @@ LIBRARY_FUNCTION_CATALOG = {
     ],
 }
 
+MIN_FUNCTIONS_PER_LIBRARY = 10
+
+LIBRARY_FUNCTION_FALLBACKS = {
+    "Streamlit": ["st.header", "st.subheader", "st.metric", "st.button", "st.checkbox", "st.radio", "st.slider", "st.columns", "st.tabs", "st.container"],
+    "NumPy": ["np.zeros", "np.ones", "np.arange", "np.linspace", "np.reshape", "np.sum", "np.std", "np.random.randn", "np.matmul", "np.concatenate"],
+    "Matplotlib": ["plt.figure", "plt.title", "plt.xlabel", "plt.ylabel", "plt.legend", "plt.imshow", "plt.hist", "plt.bar", "plt.subplot", "plt.show"],
+    "pandas": ["pd.Series", "df.head", "df.describe", "df.merge", "df.sort_values", "df.fillna", "df.dropna", "df.pivot_table", "df.loc", "df.to_csv"],
+    "spaCy": ["nlp", "Doc", "Token", "Span", "Matcher", "PhraseMatcher", "EntityRuler", "displacy.render", "DocBin", "nlp.add_pipe"],
+    "Transformers Library": ["AutoModelForSequenceClassification", "AutoModelForCausalLM", "AutoProcessor", "DataCollatorWithPadding", "TrainingArguments", "Trainer", "pipeline", "AutoConfig", "AutoFeatureExtractor", "set_seed"],
+    "FastAPI": ["Query", "Path", "Body", "UploadFile", "HTTPException", "status", "APIRouter", "Depends", "BackgroundTasks", "middleware"],
+    "OpenCV": ["cv2.cvtColor", "cv2.GaussianBlur", "cv2.threshold", "cv2.Canny", "cv2.imshow", "cv2.VideoCapture", "cv2.rectangle", "cv2.putText", "cv2.findContours", "cv2.imwrite"],
+    "scikit-learn": ["fit", "predict", "transform", "fit_transform", "score", "train_test_split", "StandardScaler", "Pipeline", "GridSearchCV", "classification_report"],
+    "XGBoost": ["DMatrix", "XGBClassifier", "XGBRegressor", "fit", "predict", "predict_proba", "plot_importance", "cv", "train", "save_model"],
+    "LightGBM": ["Dataset", "LGBMClassifier", "LGBMRegressor", "fit", "predict", "predict_proba", "plot_importance", "train", "cv", "save_model"],
+    "PyTorch": ["torch.randn", "torch.tensor", "torch.zeros", "torch.ones", "torch.matmul", "nn.Module", "nn.Linear", "torch.relu", "torch.softmax", "optimizer.step"],
+    "TensorFlow": ["tf.constant", "tf.Variable", "tf.data.Dataset", "tf.keras.Sequential", "tf.keras.layers.Dense", "tf.keras.Model", "model.compile", "model.fit", "model.evaluate", "model.predict"],
+    "Keras": ["Sequential", "Dense", "Dropout", "Conv2D", "MaxPooling2D", "Flatten", "compile", "fit", "evaluate", "predict"],
+    "YOLO": ["model.predict", "model.train", "model.val", "model.export", "model.track", "model.info", "model.names", "results.plot", "results.save", "YOLO"],
+    "Plotly": ["px.line", "px.scatter", "px.bar", "px.histogram", "go.Figure", "fig.update_layout", "fig.update_traces", "fig.add_trace", "px.imshow", "px.box"],
+    "SciPy": ["scipy.optimize.minimize", "scipy.stats.norm", "scipy.linalg.inv", "scipy.signal.find_peaks", "scipy.sparse.csr_matrix", "scipy.interpolate.interp1d", "scipy.integrate.quad", "scipy.fft.fft", "scipy.cluster.vq.kmeans", "scipy.spatial.distance.cdist"],
+    "statsmodels": ["OLS", "GLM", "Logit", "add_constant", "fit", "predict", "summary", "tsa.ARIMA", "graphics.plot_regress_exog", "stats.anova_lm"],
+    "MLflow SDK": ["mlflow.start_run", "mlflow.end_run", "mlflow.log_param", "mlflow.log_metric", "mlflow.log_artifact", "mlflow.set_experiment", "mlflow.sklearn.log_model", "mlflow.register_model", "mlflow.pyfunc.load_model", "mlflow.search_runs"],
+    "Feast": ["FeatureStore", "get_historical_features", "get_online_features", "apply", "materialize", "materialize_incremental", "plan", "push", "teardown", "serve"],
+    "BentoML": ["bentoml.service", "bentoml.api", "bentoml.models.get", "bentoml.sklearn.save_model", "bentoml.picklable_model.save_model", "bentoml.server", "bentoml.batch", "bentoml.io.JSON", "bentoml.io.NumpyNdarray", "bentoml.monitor"],
+    "Evidently": ["Report", "TestSuite", "DataDefinition", "ColumnMapping", "report.run", "report.save_html", "DriftedColumnsCount", "DataQualityPreset", "TargetDriftPreset", "RegressionPreset"],
+    "SQLAlchemy": ["create_engine", "Session", "select", "insert", "update", "delete", "declarative_base", "relationship", "sessionmaker", "text"],
+    "pymongo": ["MongoClient", "find", "find_one", "insert_one", "insert_many", "update_one", "delete_one", "aggregate", "create_index", "count_documents"],
+    "Qiskit": ["QuantumCircuit", "transpile", "measure", "h", "cx", "x", "z", "AerSimulator", "execute", "Statevector"],
+    "Cirq": ["Circuit", "LineQubit.range", "H", "CNOT", "measure", "Simulator", "rx", "rz", "PauliString", "DensityMatrixSimulator"],
+    "PennyLane": ["qml.qnode", "qml.device", "qml.RX", "qml.RY", "qml.CNOT", "qml.expval", "qml.probs", "qml.StronglyEntanglingLayers", "qml.AmplitudeEmbedding", "qml.grad"],
+    "Qiskit Machine Learning": ["QSVC", "VQC", "EstimatorQNN", "SamplerQNN", "NeuralNetworkClassifier", "NeuralNetworkRegressor", "FidelityQuantumKernel", "TorchConnector", "PegasosQSVC", "QGAN"],
+    "Qiskit Algorithms": ["VQE", "QAOA", "NumPyMinimumEigensolver", "SamplingVQE", "PhaseEstimation", "Grover", "AmplificationProblem", "IterativePhaseEstimation", "HamiltonianPhaseEstimation", "AlgorithmJob"],
+    "D-Wave Ocean": ["EmbeddingComposite", "DWaveSampler", "BinaryQuadraticModel", "sample_ising", "sample_qubo", "FixedEmbeddingComposite", "LeapHybridSampler", "SimulatedAnnealingSampler", "dimod.ExactSolver", "dwave.inspector.show"],
+    "Qiskit Runtime": ["Sampler", "Estimator", "Session", "Options", "QiskitRuntimeService", "Batch", "run", "backend", "transpile", "save_account"],
+}
+
+def get_library_function_catalog(lib_name, attrs):
+    existing_catalog = list(LIBRARY_FUNCTION_CATALOG.get(lib_name, []))
+    used_names = {entry.get("name") for entry in existing_catalog}
+
+    for fn_name in attrs.get("functions", []):
+        if fn_name not in used_names:
+            existing_catalog.append(build_generic_function_entry(lib_name, fn_name))
+            used_names.add(fn_name)
+
+    for fn_name in LIBRARY_FUNCTION_FALLBACKS.get(lib_name, []):
+        if fn_name not in used_names:
+            existing_catalog.append(build_generic_function_entry(lib_name, fn_name))
+            used_names.add(fn_name)
+        if len(existing_catalog) >= MIN_FUNCTIONS_PER_LIBRARY:
+            break
+
+    if len(existing_catalog) < MIN_FUNCTIONS_PER_LIBRARY:
+        generic_candidates = [
+            "fit", "predict", "transform", "load", "save",
+            "train", "evaluate", "plot", "run", "configure",
+            "export", "from_pretrained", "compile", "forward", "step"
+        ]
+        for fn_name in generic_candidates:
+            padded_name = fn_name if fn_name not in used_names else f"{lib_name}.{fn_name}"
+            if padded_name not in used_names:
+                existing_catalog.append(build_generic_function_entry(lib_name, padded_name))
+                used_names.add(padded_name)
+            if len(existing_catalog) >= MIN_FUNCTIONS_PER_LIBRARY:
+                break
+
+    return existing_catalog[:MIN_FUNCTIONS_PER_LIBRARY]
+
 def build_generic_function_entry(lib_name, fn_name):
     return {
         "name": fn_name,
@@ -2076,9 +2147,7 @@ def add_library_function_nodes(graph_nodes, graph_edges):
         if attrs.get("kind") not in {"libreria", "framework"}:
             continue
 
-        catalog = LIBRARY_FUNCTION_CATALOG.get(lib_name, [])
-        if not catalog and attrs.get("functions"):
-            catalog = [build_generic_function_entry(lib_name, fn_name) for fn_name in attrs.get("functions", [])[:3]]
+        catalog = get_library_function_catalog(lib_name, attrs)
 
         for entry in catalog:
             fn_node_name = f"{lib_name} :: {entry['name']}"
@@ -2227,19 +2296,38 @@ def build_graph(graph_nodes, graph_edges):
 def filter_graph(G, selected_kinds, selected_domains, selected_subareas=None):
     H = G.copy()
     remove_nodes = []
+    selected_kinds_set = set(selected_kinds or [])
+    selected_domains_set = set(selected_domains or [])
+    selected_subareas_set = set(selected_subareas or [])
+
     for n, attrs in H.nodes(data=True):
-        if selected_kinds and attrs.get("kind") not in selected_kinds and attrs.get("kind") != "contenedor":
-            remove_nodes.append(n)
-            continue
-        if selected_domains and attrs.get("domain") not in selected_domains:
-            remove_nodes.append(n)
-            continue
-        if selected_subareas:
-            rel_subareas = attrs.get("related_subareas", [])
-            if not set(rel_subareas).intersection(set(selected_subareas)) and attrs.get("kind") != "principal":
+        node_kind = attrs.get("kind")
+        if node_kind == "contenedor":
+            bucket_kind = attrs.get("bucket_kind")
+            if selected_kinds_set and bucket_kind and bucket_kind not in selected_kinds_set:
                 remove_nodes.append(n)
                 continue
+        elif selected_kinds_set and node_kind not in selected_kinds_set:
+            remove_nodes.append(n)
+            continue
+
+        if selected_domains_set and attrs.get("domain") not in selected_domains_set:
+            remove_nodes.append(n)
+            continue
+
+        if selected_subareas_set:
+            rel_subareas = set(attrs.get("related_subareas", []))
+            if attrs.get("kind") != "principal" and not rel_subareas.intersection(selected_subareas_set):
+                remove_nodes.append(n)
+                continue
+
     H.remove_nodes_from(remove_nodes)
+
+    empty_containers = [
+        n for n, attrs in H.nodes(data=True)
+        if attrs.get("kind") == "contenedor" and H.degree(n) <= 1
+    ]
+    H.remove_nodes_from(empty_containers)
     return H
 
 def create_timeline_df(graph_nodes):
@@ -2424,29 +2512,38 @@ all_domains = sorted({attrs.get("domain", "General") for attrs in graph_nodes.va
 all_kinds = sorted({attrs.get("kind", "concepto") for attrs in graph_nodes.values()})
 legend_kinds = [k for k in all_kinds if k != "principal"]
 
-selected_domains = st.sidebar.multiselect(
-    tr("Filtrar por dominio", "Filter by domain"),
-    all_domains,
-    default=[],
-    format_func=lambda v: translate_name(v),
-)
-selected_kinds = st.sidebar.multiselect(
-    tr("Filtrar por tipo", "Filter by type"),
-    all_kinds,
-    default=["principal", "subarea", "concepto"] if set(["principal", "subarea", "concepto"]).issubset(set(all_kinds)) else [],
-    format_func=lambda v: translate_kind(v),
-)
-
 all_subareas = sorted({
     n for n, attrs in graph_nodes.items()
     if attrs.get("kind") == "subarea"
 })
-selected_subareas = st.sidebar.multiselect(
-    tr("Filtrar por subárea", "Filter by subarea"),
-    all_subareas,
-    default=[],
-    format_func=lambda v: translate_name(v),
-)
+
+filter_row = st.columns([1.15, 1.5, 1.5, 1.9], gap="medium")
+with filter_row[0]:
+    st.caption(tr("Exploración", "Exploration"))
+with filter_row[1]:
+    selected_domains = st.multiselect(
+        tr("Filtrar por dominio", "Filter by domain"),
+        all_domains,
+        default=[],
+        format_func=lambda v: translate_name(v),
+        key="top_filter_domains",
+    )
+with filter_row[2]:
+    selected_subareas = st.multiselect(
+        tr("Filtrar por subárea", "Filter by subarea"),
+        all_subareas,
+        default=[],
+        format_func=lambda v: translate_name(v),
+        key="top_filter_subareas",
+    )
+with filter_row[3]:
+    selected_kinds = st.multiselect(
+        tr("Filtrar por tipo", "Filter by type"),
+        all_kinds,
+        default=all_kinds,
+        format_func=lambda v: translate_kind(v),
+        key="top_filter_kinds",
+    )
 
 G_filtered = filter_graph(G_full, selected_kinds, selected_domains, selected_subareas)
 
