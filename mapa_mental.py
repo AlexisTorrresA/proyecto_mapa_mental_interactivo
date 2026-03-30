@@ -28,13 +28,13 @@ GITHUB_URL = "https://github.com/AlexisTorrresA"
 KIND_STYLES = {
     "principal": {"shape": "dot", "size_boost": 10},
     "subarea": {"shape": "dot", "size_boost": 4},
-    "contenedor": {"shape": "dot", "size_boost": 1},
     "concepto": {"shape": "dot", "size_boost": 0},
     "herramienta": {"shape": "box", "size_boost": -2},
     "libreria": {"shape": "box", "size_boost": -2},
     "framework": {"shape": "box", "size_boost": -2},
     "recurso": {"shape": "star", "size_boost": -2},
     "dataset": {"shape": "hexagon", "size_boost": -2},
+    "aplicacion": {"shape": "diamond", "size_boost": -1},
     "funcion": {"shape": "ellipse", "size_boost": -4},
 }
 
@@ -95,7 +95,7 @@ def make_container(domain, parent, label, year=None, title=None):
         "label_type": label,
     }
 
-def make_node(kind, domain, year, title, size=12, url=None, examples=None, tools=None, functions=None, tags=None):
+def make_node(kind, domain, year, title, size=12, url=None, examples=None, tools=None, functions=None, tags=None, related_concepts=None, related_subareas=None):
     return {
         "kind": kind,
         "domain": domain,
@@ -107,40 +107,90 @@ def make_node(kind, domain, year, title, size=12, url=None, examples=None, tools
         "tools": tools or [],
         "functions": functions or [],
         "tags": tags or [],
+        "related_concepts": related_concepts or [],
+        "related_subareas": related_subareas or [],
     }
 
 nodes = {}
 edges = []
 
+ALIASES = {
+    "Pandas DS": "pandas",
+    "NumPy DS": "NumPy",
+    "Matplotlib DS": "Matplotlib",
+    "spaCy NLP": "spaCy",
+    "OpenCV Vision": "OpenCV",
+    "OpenCV IoT": "OpenCV",
+    "YOLO IoT": "YOLO",
+    "FastAPI Apps": "FastAPI",
+    "Weights & Biases MLOps": "Weights & Biases",
+    "Colab": "Google Colab",
+    "Postman QA": "Postman",
+    "Transformers": "Transformers Library",
+    "Transformers GenAI": "Transformers Library",
+}
+
+def canonical_name(name, kind=None):
+    if kind == "concepto":
+        return name
+    return ALIASES.get(name, name)
+
+def merge_unique_list(base, extra):
+    result = list(base or [])
+    for item in extra or []:
+        if item not in result:
+            result.append(item)
+    return result
+
 def add_node(name, attrs):
-    if name not in nodes:
-        nodes[name] = attrs
+    key = canonical_name(name, attrs.get("kind"))
+    attrs = dict(attrs)
+    attrs.setdefault("label", key)
+    if key not in nodes:
+        nodes[key] = attrs
+    else:
+        existing = nodes[key]
+        for list_field in ["examples", "tools", "functions", "tags", "related_concepts", "related_subareas"]:
+            existing[list_field] = merge_unique_list(existing.get(list_field, []), attrs.get(list_field, []))
+        for field in ["url", "year", "domain", "kind"]:
+            if not existing.get(field) and attrs.get(field):
+                existing[field] = attrs[field]
+        if attrs.get("title"):
+            if not existing.get("title"):
+                existing["title"] = attrs["title"]
+            elif attrs["title"] not in existing["title"]:
+                longer = attrs["title"] if len(attrs["title"]) > len(existing["title"]) else existing["title"]
+                existing["title"] = longer
+        if attrs.get("size") and attrs.get("size", 0) > existing.get("size", 0):
+            existing["size"] = attrs["size"]
+    return key
 
 def add_edge(src, dst, relation="relaciona"):
-    edge = (src, dst, relation)
-    if edge not in edges:
+    src_key = canonical_name(src)
+    dst_key = canonical_name(dst)
+    edge = (src_key, dst_key, relation)
+    if edge not in edges and src_key != dst_key:
         edges.append(edge)
-
-def add_typed_item(parent_container, item_name, kind, domain, year, title, url=None, functions=None):
-    add_node(item_name, make_node(kind, domain, year, title, size=12, url=url, functions=functions))
-    add_edge(parent_container, item_name, "contiene")
-
 
 def normalize_item(item, inferred_kind, subarea):
     if isinstance(item, dict):
-        item_name = item["name"]
+        item_name = canonical_name(item["name"], item.get("kind", inferred_kind))
         item_kind = item.get("kind", inferred_kind)
         item_year = item.get("year")
         item_title = item.get("title", f"{item_name} dentro de {subarea}.")
         item_url = item.get("url")
         item_functions = item.get("functions", [])
+        item_examples = item.get("examples", [])
+        item_related_to = item.get("related_to", [])
     else:
-        item_name = item
+        item_name = canonical_name(item, inferred_kind)
         item_kind = inferred_kind
         item_year = None
         item_title = f"{item} dentro de {subarea}."
         item_url = None
         item_functions = []
+        item_examples = []
+        item_related_to = []
     return {
         "name": item_name,
         "kind": item_kind,
@@ -148,24 +198,47 @@ def normalize_item(item, inferred_kind, subarea):
         "title": item_title,
         "url": item_url,
         "functions": item_functions,
+        "examples": item_examples,
+        "related_to": item_related_to,
     }
 
-def build_group_description(label, subarea, items):
-    first_line = f"Grupo {label} asociado a {subarea}."
-    if label.lower() == "librerías":
-        extra = "Incluye librerías y frameworks relevantes, con su propósito, funciones principales y enlaces de consulta."
-    elif label.lower() == "herramientas":
-        extra = "Incluye herramientas operativas o de uso práctico para trabajar esta subárea."
-    elif label.lower() == "recursos":
-        extra = "Incluye documentación, portales y material para profundizar."
-    elif label.lower() == "datasets":
-        extra = "Incluye datasets o fuentes de datos útiles para practicar, evaluar o entrenar."
-    elif label.lower() == "aplicaciones":
-        extra = "Incluye ejemplos de aplicación y uso real."
-    else:
-        extra = "Incluye elementos relacionados con esta subárea."
-    return first_line + " " + extra + f" Total: {len(items)} elemento(s)."
+def relation_label(kind):
+    return {
+        "herramienta": "usa",
+        "libreria": "usa",
+        "framework": "usa",
+        "recurso": "consulta",
+        "dataset": "usa datos",
+        "aplicacion": "aplica",
+    }.get(kind, "relaciona")
 
+def build_related_examples(item_kind, subarea, related):
+    if item_kind == "libreria":
+        return [
+            f"Uso típico dentro de {subarea}.",
+            f"Puede aplicarse en: {', '.join(related[:3])}." if related else f"Se relaciona con tareas de {subarea}.",
+        ]
+    if item_kind == "herramienta":
+        return [
+            f"Herramienta útil para trabajar {subarea}.",
+            f"Suele apoyar flujos como: {', '.join(related[:3])}." if related else f"Se utiliza en actividades de {subarea}.",
+        ]
+    if item_kind == "recurso":
+        return [
+            f"Recurso recomendado para profundizar en {subarea}.",
+            f"Sirve para estudiar o consultar temas como: {', '.join(related[:3])}." if related else f"Permite ampliar conocimiento de {subarea}.",
+        ]
+    if item_kind == "dataset":
+        return [
+            f"Dataset o fuente útil en {subarea}.",
+            f"Se puede usar para practicar o evaluar: {', '.join(related[:3])}." if related else f"Apoya experimentación en {subarea}.",
+        ]
+    if item_kind == "aplicacion":
+        return [
+            f"Ejemplo de aplicación práctica en {subarea}.",
+            f"Relacionado con: {', '.join(related[:3])}." if related else f"Conecta teoría con casos de uso de {subarea}.",
+        ]
+    return [f"Elemento asociado a {subarea}."]
 
 def add_taxonomy_branch(domain_root, subarea, concept_items=None, tool_items=None, lib_items=None, resource_items=None, dataset_items=None, app_items=None, year=None, description=None):
     add_node(subarea, {
@@ -175,67 +248,80 @@ def add_taxonomy_branch(domain_root, subarea, concept_items=None, tool_items=Non
         "year": year,
         "title": description or f"Subárea de {domain_root}: {subarea}.",
         "tags": [domain_root, subarea],
+        "related_subareas": [subarea],
     })
     add_edge(domain_root, subarea, "incluye")
 
+    normalized_concepts = [normalize_item(item, "concepto", subarea) for item in (concept_items or [])]
+    concept_names = []
+
+    for item in normalized_concepts:
+        node_examples = item["examples"] or [
+            f"Concepto perteneciente a {subarea}.",
+            f"Forma parte del dominio {domain_root}.",
+        ]
+        add_node(
+            item["name"],
+            make_node(
+                item["kind"],
+                domain_root,
+                item["year"],
+                item["title"],
+                size=13,
+                url=item["url"],
+                functions=item["functions"],
+                examples=node_examples,
+                tags=[domain_root, subarea, item["name"]],
+                related_concepts=[item["name"]],
+                related_subareas=[subarea],
+            ),
+        )
+        add_edge(subarea, item["name"], "incluye")
+        concept_names.append(item["name"])
+
     buckets = [
-        ("Conceptos", concept_items or [], "concepto"),
-        ("Herramientas", tool_items or [], "herramienta"),
-        ("Librerías", lib_items or [], "libreria"),
-        ("Recursos", resource_items or [], "recurso"),
-        ("Datasets", dataset_items or [], "dataset"),
-        ("Aplicaciones", app_items or [], "aplicacion"),
+        (tool_items or [], "herramienta"),
+        (lib_items or [], "libreria"),
+        (resource_items or [], "recurso"),
+        (dataset_items or [], "dataset"),
+        (app_items or [], "aplicacion"),
     ]
 
-    for label, items, inferred_kind in buckets:
-        if not items:
-            continue
-
+    for items, inferred_kind in buckets:
         normalized_items = [normalize_item(item, inferred_kind, subarea) for item in items]
+        for item in normalized_items:
+            related = item["related_to"] or concept_names[:] or [subarea]
+            node_examples = item["examples"] or build_related_examples(item["kind"], subarea, related)
+            extended_title = item["title"]
+            if item["url"]:
+                extended_title += " Recurso recomendado incluido para profundizar."
+            if item["functions"]:
+                extended_title += " Incluye funciones principales para consulta rápida."
 
-        if label == "Conceptos":
-            container_name = f"{subarea} :: {label}"
             add_node(
-                container_name,
-                make_container(
-                    domain_root,
-                    subarea,
-                    label,
-                    year=year,
-                    title=f"Grupo {label} asociado a {subarea}."
-                )
-            )
-            add_edge(subarea, container_name, "agrupa")
-
-            for item in normalized_items:
-                add_typed_item(
-                    container_name,
-                    item["name"],
+                item["name"],
+                make_node(
                     item["kind"],
                     domain_root,
                     item["year"],
-                    item["title"],
+                    extended_title,
+                    size=12,
                     url=item["url"],
                     functions=item["functions"],
-                )
-        else:
-            container_name = f"{subarea} :: {label}"
-            add_node(
-                container_name,
-                {
-                    "kind": "contenedor",
-                    "domain": domain_root,
-                    "size": 16,
-                    "year": year,
-                    "title": build_group_description(label, subarea, normalized_items),
-                    "items_detail": normalized_items,
-                    "group_parent": subarea,
-                    "label_type": label,
-                    "tags": [domain_root, subarea, label],
-                }
+                    examples=node_examples,
+                    tags=[domain_root, subarea, item["kind"], item["name"]],
+                    related_concepts=related if concept_names else [],
+                    related_subareas=[subarea],
+                ),
             )
-            add_edge(subarea, container_name, "agrupa")
 
+            linked = False
+            for concept_name in related:
+                if concept_name in concept_names:
+                    add_edge(concept_name, item["name"], relation_label(item["kind"]))
+                    linked = True
+            if not linked:
+                add_edge(subarea, item["name"], relation_label(item["kind"]))
 # =========================================================
 # Nivel 0: dominios principales
 # =========================================================
@@ -268,6 +354,7 @@ add_node("Python", {
     "title": "Lenguaje clave para IA, backend, automatización, análisis de datos y scripting.",
     "url": "https://www.python.org/",
     "tags": ["Python", "lenguaje"],
+    "related_subareas": ["Python"],
 })
 add_edge("Ingeniería de Software", "Python", "incluye")
 
@@ -278,6 +365,7 @@ python_libraries = [
         "title": "Framework Python para construir apps interactivas de datos y prototipos visuales.",
         "url": "https://streamlit.io/",
         "functions": ["title", "write", "sidebar", "selectbox", "dataframe"],
+        "examples": ["Dashboards rápidos", "Prototipos de análisis", "Interfaces para modelos y datos"],
     },
     {
         "name": "NumPy",
@@ -285,6 +373,7 @@ python_libraries = [
         "title": "Librería para computación numérica, arreglos multidimensionales y álgebra lineal básica.",
         "url": "https://numpy.org/",
         "functions": ["array", "mean", "dot", "linspace", "reshape"],
+        "examples": ["Cálculo científico", "Álgebra lineal", "Preprocesamiento numérico"],
     },
     {
         "name": "Matplotlib",
@@ -292,6 +381,7 @@ python_libraries = [
         "title": "Librería de visualización para gráficos estáticos, científicos y analíticos.",
         "url": "https://matplotlib.org/",
         "functions": ["plot", "scatter", "hist", "imshow", "figure"],
+        "examples": ["Gráficos de líneas", "Histogramas", "Visualización exploratoria"],
     },
     {
         "name": "pandas",
@@ -299,6 +389,7 @@ python_libraries = [
         "title": "Librería para manipulación, limpieza, transformación y análisis de datos tabulares.",
         "url": "https://pandas.pydata.org/docs/",
         "functions": ["DataFrame", "read_csv", "groupby", "merge", "pivot_table"],
+        "examples": ["Lectura de CSV", "Transformaciones tabulares", "Agregaciones y joins"],
     },
     {
         "name": "spaCy",
@@ -306,6 +397,7 @@ python_libraries = [
         "title": "Librería de NLP orientada a producción para procesamiento eficiente de texto.",
         "url": "https://spacy.io/",
         "functions": ["load", "pipe", "displacy", "Matcher", "Doc"],
+        "examples": ["NER", "Lematización", "Pipelines de NLP"],
     },
     {
         "name": "Transformers Library",
@@ -313,6 +405,7 @@ python_libraries = [
         "title": "Librería de Hugging Face para modelos transformer, NLP, visión e IA generativa.",
         "url": "https://huggingface.co/docs/transformers/index",
         "functions": ["pipeline", "AutoTokenizer", "AutoModel", "Trainer"],
+        "examples": ["Clasificación de texto", "Embeddings", "Fine-tuning de modelos"],
     },
     {
         "name": "FastAPI",
@@ -320,6 +413,7 @@ python_libraries = [
         "title": "Framework de Python para construir APIs rápidas, tipadas y con documentación automática.",
         "url": "https://fastapi.tiangolo.com/",
         "functions": ["FastAPI", "get", "post", "Depends", "BackgroundTasks"],
+        "examples": ["APIs REST", "Serving de modelos", "Backends ligeros"],
     },
     {
         "name": "OpenCV",
@@ -327,37 +421,29 @@ python_libraries = [
         "title": "Librería popular para procesamiento de imágenes, visión por computador y video.",
         "url": "https://opencv.org/",
         "functions": ["imread", "resize", "cvtColor", "VideoCapture", "findContours"],
+        "examples": ["Detección visual", "Procesamiento de imágenes", "Visión en tiempo real"],
     },
 ]
 
-python_libraries_detail = []
 for lib in python_libraries:
-    python_libraries_detail.append(
-        {
-            "name": lib["name"],
-            "kind": "libreria",
-            "year": lib.get("year"),
-            "title": lib.get("title", ""),
-            "url": lib.get("url"),
-            "functions": lib.get("functions", []),
-        }
+    item = normalize_item(lib, "libreria", "Python")
+    add_node(
+        item["name"],
+        make_node(
+            item["kind"],
+            "Ingeniería de Software",
+            item["year"],
+            item["title"] + " Haz click para ver funciones principales, ejemplos y enlace.",
+            size=12,
+            url=item["url"],
+            functions=item["functions"],
+            examples=item["examples"],
+            tags=["Ingeniería de Software", "Python", "libreria", item["name"]],
+            related_concepts=["Python"],
+            related_subareas=["Python"],
+        ),
     )
-
-add_node(
-    "Python :: Librerías",
-    {
-        "kind": "contenedor",
-        "domain": "Ingeniería de Software",
-        "size": 16,
-        "year": 1991,
-        "title": "Grupo de librerías y frameworks relevantes del ecosistema Python. Haz click para ver el detalle ampliado de cada una.",
-        "items_detail": python_libraries_detail,
-        "group_parent": "Python",
-        "label_type": "Librerías",
-        "tags": ["Ingeniería de Software", "Python", "Librerías"],
-    }
-)
-add_edge("Python", "Python :: Librerías", "agrupa")
+    add_edge("Python", item["name"], "usa")
 
 # =========================================================
 # Inteligencia Artificial
@@ -1440,7 +1526,8 @@ for src, dst in cross_links:
 # =========================================================
 
 def enrich_title(name, attrs):
-    lines = [f"{name}"]
+    display_name = attrs.get("label", name)
+    lines = [f"{display_name}"]
     if attrs.get("kind"):
         lines.append(f"Tipo: {attrs['kind']}")
     if attrs.get("domain"):
@@ -1451,27 +1538,20 @@ def enrich_title(name, attrs):
         lines.append("")
         lines.append(attrs["title"])
 
-    item_details = attrs.get("items_detail", [])
-    if item_details:
+    if attrs.get("related_subareas"):
         lines.append("")
-        lines.append("Detalle del grupo:")
-        for item in item_details:
-            lines.append("")
-            header = f"- {item.get('name', '')}"
-            meta_parts = []
-            if item.get("kind"):
-                meta_parts.append(item["kind"])
-            if item.get("year"):
-                meta_parts.append(str(item["year"]))
-            if meta_parts:
-                header += f" ({' | '.join(meta_parts)})"
-            lines.append(header)
-            if item.get("title"):
-                lines.append(f"  Uso: {item['title']}")
-            if item.get("functions"):
-                lines.append(f"  Funciones principales: {', '.join(item['functions'])}")
-            if item.get("url"):
-                lines.append(f"  Link: {item['url']}")
+        lines.append("Subáreas relacionadas:")
+        lines.append(", ".join(attrs["related_subareas"][:6]))
+    if attrs.get("related_concepts"):
+        lines.append("")
+        lines.append("Conceptos relacionados:")
+        lines.append(", ".join(attrs["related_concepts"][:8]))
+
+    if attrs.get("examples"):
+        lines.append("")
+        lines.append("Ejemplos:")
+        for ex in attrs["examples"][:4]:
+            lines.append(f"- {ex}")
 
     if attrs.get("functions"):
         lines.append("")
@@ -1486,7 +1566,8 @@ def build_detail_html(name, attrs):
     def esc(v):
         return html.escape(str(v))
 
-    parts = [f"<h3 style='margin:0 0 8px 0'>{esc(name)}</h3>"]
+    display_name = attrs.get("label", name)
+    parts = [f"<h3 style='margin:0 0 8px 0'>{esc(display_name)}</h3>"]
     meta = []
     if attrs.get("kind"):
         meta.append(f"<b>Tipo:</b> {esc(attrs['kind'])}")
@@ -1499,42 +1580,22 @@ def build_detail_html(name, attrs):
     if attrs.get("title"):
         parts.append(f"<p style='margin:0 0 12px 0'>{esc(attrs['title'])}</p>")
 
-    item_details = attrs.get("items_detail", [])
-    if item_details:
-        parts.append("<div style='margin-top:10px'>")
-        parts.append("<b>Detalle del grupo</b>")
-        parts.append("<ul style='margin-top:8px'>")
-        for item in item_details:
-            item_line = f"<li><b>{esc(item.get('name',''))}</b>"
-            meta_bits = []
-            if item.get("kind"):
-                meta_bits.append(esc(item["kind"]))
-            if item.get("year"):
-                meta_bits.append(esc(item["year"]))
-            if meta_bits:
-                item_line += f" <span style='color:#666'>({' | '.join(meta_bits)})</span>"
-            if item.get("title"):
-                item_line += f"<br><span>{esc(item['title'])}</span>"
-            if item.get("functions"):
-                item_line += f"<br><span><b>Funciones principales:</b> {esc(', '.join(item['functions']))}</span>"
-            if item.get("url"):
-                url = esc(item["url"])
-                item_line += f"<br><a href='{url}' target='_blank'>Ver más</a>"
-            item_line += "</li>"
-            parts.append(item_line)
-        parts.append("</ul></div>")
+    if attrs.get("related_subareas"):
+        parts.append("<p><b>Subáreas relacionadas:</b> " + esc(", ".join(attrs["related_subareas"])) + "</p>")
+    if attrs.get("related_concepts"):
+        parts.append("<p><b>Conceptos relacionados:</b> " + esc(", ".join(attrs["related_concepts"])) + "</p>")
 
     if attrs.get("examples"):
-        parts.append("<div style='margin-top:10px'><b>Ejemplos</b><ul>")
+        parts.append("<div style='margin-top:10px'><b>Ejemplos o usos típicos</b><ul>")
         for ex in attrs["examples"]:
             parts.append(f"<li>{esc(ex)}</li>")
         parts.append("</ul></div>")
 
     if attrs.get("functions"):
-        parts.append(f"<p><b>Funciones clave:</b> {esc(', '.join(attrs['functions']))}</p>")
+        parts.append(f"<p><b>Funciones principales:</b> {esc(', '.join(attrs['functions']))}</p>")
     if attrs.get("url"):
         url = esc(attrs["url"])
-        parts.append(f"<p><a href='{url}' target='_blank'>Ir al recurso</a></p>")
+        parts.append(f"<p><a href='{url}' target='_blank'>Ver más / profundizar en el tema</a></p>")
 
     return "".join(parts)
 
@@ -1643,7 +1704,7 @@ def render_graph(G):
         base_color = TYPE_COLOR_OVERRIDES.get(kind, DOMAIN_COLORS.get(domain, DOMAIN_COLORS["General"]))
         style = KIND_STYLES.get(kind, KIND_STYLES["concepto"])
         size = max(8, attrs.get("size", 12) + style.get("size_boost", 0))
-        label = name
+        label = attrs.get("label", name)
         if show_year_in_label and attrs.get("year"):
             label = f"{name} ({attrs['year']})"
         net.add_node(
@@ -1846,4 +1907,4 @@ else:
     st.warning("No hay nodos para mostrar en la tabla.")
 
 st.markdown("---")
-st.caption("Sugerencia: usa click para bajar por ramas y profundidad 1-2 para ver submapas más limpios.")
+st.caption("Sugerencia: activa tipos como libreria, herramienta, recurso o dataset para ver cómo se conectan directamente con cada concepto.")
