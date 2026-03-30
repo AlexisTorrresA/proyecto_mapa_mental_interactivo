@@ -2177,7 +2177,7 @@ def build_graph(graph_nodes, graph_edges):
             G.add_edge(src, dst, relation=rel)
     return G
 
-def filter_graph(G, selected_kinds, selected_domains, selected_subareas):
+def filter_graph(G, selected_kinds, selected_domains, selected_subareas=None):
     H = G.copy()
     remove_nodes = []
     for n, attrs in H.nodes(data=True):
@@ -2379,7 +2379,17 @@ selected_kinds = st.sidebar.multiselect(
     default=["principal", "subarea", "concepto"] if set(["principal", "subarea", "concepto"]).issubset(set(all_kinds)) else [],
 )
 
-G_filtered = filter_graph(G_full, selected_kinds, selected_domains)
+all_subareas = sorted({
+    n for n, attrs in graph_nodes.items()
+    if attrs.get("kind") == "subarea"
+})
+selected_subareas = st.sidebar.multiselect(
+    "Filtrar por subárea",
+    all_subareas,
+    default=[],
+)
+
+G_filtered = filter_graph(G_full, selected_kinds, selected_domains, selected_subareas)
 
 # =========================================================
 # Layout principal
