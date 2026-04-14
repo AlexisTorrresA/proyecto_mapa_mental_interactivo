@@ -36,7 +36,7 @@ def tr(es: str, en: str) -> str:
     return en if IS_EN else es
 
 if "show_right_panel" not in st.session_state:
-    st.session_state.show_right_panel = True
+    st.session_state.show_right_panel = False
 show_right_panel = st.session_state.show_right_panel
 show_function_nodes = True
 
