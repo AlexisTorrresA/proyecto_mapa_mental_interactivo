@@ -491,7 +491,19 @@ def ensure_bucket_container(domain_root, subarea, bucket_key, label_es, label_en
     add_edge(subarea, container_name, tr("agrupa", "groups"))
     return container_name
 
-def add_taxonomy_branch(domain_root, subarea, concept_items=None, tool_items=None, lib_items=None, resource_items=None, dataset_items=None, app_items=None, year=None, description=None):
+def add_taxonomy_branch(
+    domain_root,
+    subarea,
+    parent=None,
+    concept_items=None,
+    tool_items=None,
+    lib_items=None,
+    resource_items=None,
+    dataset_items=None,
+    app_items=None,
+    year=None,
+    description=None
+):
     add_node(subarea, {
         "kind": "subarea",
         "domain": domain_root,
@@ -501,7 +513,9 @@ def add_taxonomy_branch(domain_root, subarea, concept_items=None, tool_items=Non
         "tags": [domain_root, subarea],
         "related_subareas": [subarea],
     })
-    add_edge(domain_root, subarea, "incluye")
+
+    parent_node = parent if parent else domain_root
+    add_edge(parent_node, subarea, "incluye")
 
     normalized_concepts = [normalize_item(item, "concepto", subarea) for item in (concept_items or [])]
     concept_names = []
@@ -709,17 +723,24 @@ for lib in python_libraries:
 # =========================================================
 # Inteligencia Artificial
 # =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 add_taxonomy_branch(
     "Inteligencia Artificial",
     "Machine Learning",
-    concept_items=[
-        {"name": "aprendizaje supervisado", "title": "Modelos entrenados con datos etiquetados.", "year": 1950},
-        {"name": "aprendizaje no supervisado", "title": "Búsqueda de patrones o grupos en datos sin etiquetas.", "year": 1958},
-        {"name": "aprendizaje por refuerzo", "title": "Aprendizaje mediante recompensas y penalizaciones.", "year": 1989},
-        {"name": "clasificación", "title": "Predicción de clases o categorías."},
-        {"name": "regresión", "title": "Predicción de variables continuas."},
-        {"name": "clustering", "title": "Agrupación automática por similitud."},
-    ],
     tool_items=[
         {"name": "Jupyter", "title": "Entorno de notebooks interactivos.", "year": 2014, "url": "https://jupyter.org/"},
         {"name": "Google Colab", "title": "Entorno de notebooks en la nube.", "year": 2018, "url": "https://colab.research.google.com/"},
@@ -740,11 +761,16 @@ add_taxonomy_branch(
     ],
     year=1959,
     description="Subárea de IA donde los modelos aprenden patrones a partir de datos."
+
 )
+
+
+
 
 add_taxonomy_branch(
     "Inteligencia Artificial",
     "Deep Learning",
+    parent="Machine Learning",
     concept_items=[
         {"name": "redes neuronales", "title": "Base del aprendizaje profundo.", "year": 1943},
         {"name": "CNN", "title": "Redes convolucionales usadas especialmente en imágenes.", "year": 1998},
@@ -841,9 +867,13 @@ add_taxonomy_branch(
     description="Área que permite interpretar imágenes, videos y escenas visuales."
 )
 
+
+
+
 add_taxonomy_branch(
     "Inteligencia Artificial",
     "IA Generativa",
+    parent="Deep Learning",
     concept_items=[
         {"name": "LLM", "title": "Modelos de lenguaje de gran escala.", "year": 2018},
         {"name": "difusión", "title": "Modelos generativos basados en difusión.", "year": 2015},
