@@ -45,8 +45,8 @@ show_function_nodes = True
 st.title(tr("Mapa conceptual interactivo de tecnología", "Interactive Technology Concept Map"))
 st.write(
     tr(
-        "Haz click en un nodo para ver su detalle ampliado dentro del panel inferior del mapa. Usa los filtros superiores para simplificar la vista.",
-        "Click a node to see its detailed information in the panel below the map. Use the top filters to simplify the view."
+        "Haz click en un nodo para ver su detalle ampliado dentro del panel derecho del mapa. Usa los filtros superiores para simplificar la vista.",
+        "Click a node to see its detailed information in the right-side panel of the map. Use the top filters to simplify the view."
     )
 )
 
@@ -305,8 +305,12 @@ sort_by_epoch = st.sidebar.checkbox(tr("Ordenar conceptos por época", "Sort con
 
 st.sidebar.markdown("---")
 st.sidebar.subheader(tr("Exploración", "Exploration"))
-st.sidebar.caption(tr("El detalle de cada nodo aparece dentro del panel inferior del mapa al hacer click.", "The detailed node panel appears below the map when you click a node."))
-
+st.sidebar.caption(
+    tr(
+        "El detalle de cada nodo aparece en el panel derecho del mapa al hacer click.",
+        "Each node detail appears in the right-side panel of the map when clicked."
+    )
+)
 # =========================================================
 # Helpers para datos
 # =========================================================
@@ -2666,10 +2670,81 @@ def inject_click_behavior(html_path):
     with open(html_path, "r", encoding="utf-8") as f:
         html_content = f.read()
 
+    panel_css = f"""
+<style>
+html, body {{
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+}}
+
+body {{
+  position: relative;
+}}
+
+#mynetwork {{
+  width: calc(100% - 370px) !important;
+  height: 780px !important;
+  border: 1px solid #e9ecef;
+  border-radius: 14px;
+  box-sizing: border-box;
+}}
+
+#selected-node-panel {{
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 350px;
+  height: 780px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 14px;
+  border-left: 1px solid #dee2e6;
+  background: #fafafa;
+}}
+
+#selected-node-panel .panel-title {{
+  font-weight: 700;
+  font-size: 18px;
+  margin-bottom: 10px;
+}}
+
+#selected-node-content {{
+  color: #333;
+  line-height: 1.45;
+}}
+
+#selected-node-content details {{
+  margin: 10px 0;
+  border: 1px solid #d9d9d9;
+  border-radius: 10px;
+  background: #ffffff;
+}}
+
+#selected-node-content summary {{
+  cursor: pointer;
+  padding: 10px 12px;
+  font-weight: 700;
+}}
+
+#selected-node-content pre {{
+  white-space: pre-wrap;
+  overflow-x: auto;
+}}
+</style>
+"""
+
     detail_panel = f"""
-<div id="selected-node-panel" style="margin-top:16px;padding:14px;border:1px solid #ddd;border-radius:12px;background:#fafafa;font-family:Arial, sans-serif;">
-  <div style="font-weight:700;margin-bottom:8px;">{tr('Detalle del nodo', 'Node details')}</div>
-  <div id="selected-node-content" style="color:#333;">{tr('Haz click sobre un nodo para ver aquí su descripción ampliada, usos, funciones principales y enlaces. Haz doble click para abrir el recurso principal del nodo.', 'Click a node to see its detailed description, uses, key functions and links here. Double click to open the main node resource.')}</div>
+<div id="selected-node-panel">
+  <div class="panel-title">{tr("Detalle del nodo", "Node details")}</div>
+  <div id="selected-node-content">
+    {tr(
+        "Haz click sobre un nodo para ver aquí su descripción ampliada, usos, funciones principales y enlaces. Haz doble click para abrir el recurso principal del nodo.",
+        "Click a node to see its detailed description, uses, key functions and links here. Double click to open the main node resource."
+    )}
+  </div>
 </div>
 """
 
@@ -2677,7 +2752,7 @@ def inject_click_behavior(html_path):
 <script type="text/javascript">
 function waitForNetwork() {
   if (typeof network === "undefined" || typeof nodes === "undefined") {
-    setTimeout(waitForNetwork, 500);
+    setTimeout(waitForNetwork, 400);
     return;
   }
 
@@ -2692,10 +2767,15 @@ function waitForNetwork() {
     if (!params.nodes || params.nodes.length === 0) return;
     const nodeId = params.nodes[0];
     const node = nodes.get(nodeId);
+
     if (node && node.detail_html) {
       setPanel(node.detail_html);
     } else if (node && node.title) {
-      setPanel("<pre style='white-space:pre-wrap;font-family:Arial,sans-serif;'>" + node.title + "</pre>");
+      setPanel(
+        "<pre style='white-space:pre-wrap;font-family:Arial,sans-serif;'>" +
+        node.title +
+        "</pre>"
+      );
     }
   });
 
@@ -2711,8 +2791,17 @@ function waitForNetwork() {
 waitForNetwork();
 </script>
 """
+
+    if "</head>" in html_content:
+        html_content = html_content.replace("</head>", panel_css + "\n</head>")
+    else:
+        html_content = panel_css + html_content
+
     if "</body>" in html_content:
         html_content = html_content.replace("</body>", detail_panel + js + "\n</body>")
+    else:
+        html_content = html_content + detail_panel + js
+
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
@@ -2806,7 +2895,7 @@ def render_graph(G):
     with open(html_path, "r", encoding="utf-8") as f:
         html_content = f.read()
 
-    components.html(html_content, height=980, scrolling=True)
+    components.html(html_content, height=800, scrolling=False)
 
 
 # =========================================================
