@@ -269,6 +269,17 @@ DOMAIN_COLORS = {
      "General": "#adb5bd",
 }
 
+LEVEL_COLORS = {
+    0: "#1d4ed8",  # raíz
+    1: "#3b82f6",
+    2: "#60a5fa",
+    3: "#93c5fd",
+    4: "#bfdbfe",
+    5: "#dbeafe",
+    6: "#eff6ff",
+}
+
+
 TYPE_COLOR_OVERRIDES = {
     "herramienta": "#e9ecef",
     "libreria": "#d8f3dc",
@@ -2805,6 +2816,51 @@ waitForNetwork();
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
+
+def compute_hierarchy_levels(G):
+    levels = {}
+
+    # raíces principales
+    root_nodes = [
+        n for n, attrs in G.nodes(data=True)
+        if attrs.get("kind") == "principal"
+    ]
+
+    # fallback: si no encuentra principales, usa nodos con in_degree 0
+    if not root_nodes:
+        root_nodes = [n for n in G.nodes if G.in_degree(n) == 0]
+
+    for root in root_nodes:
+        if root not in levels or levels[root] > 0:
+            levels[root] = 0
+
+        queue = deque([(root, 0)])
+        visited = set()
+
+        while queue:
+            current, level = queue.popleft()
+            if current in visited:
+                continue
+            visited.add(current)
+
+            if current not in levels or level < levels[current]:
+                levels[current] = level
+
+            for neighbor in G.successors(current):
+                next_level = level + 1
+                if neighbor not in levels or next_level < levels[neighbor]:
+                    levels[neighbor] = next_level
+                queue.append((neighbor, next_level))
+
+    # fallback final para nodos sueltos
+    for n in G.nodes:
+        if n not in levels:
+            levels[n] = 0
+
+    return levels
+
+
+
 def render_graph(G):
     net = Network(height="780px", width="100%", bgcolor="#ffffff", font_color="#111111")
     hierarchical = None
@@ -2813,21 +2869,43 @@ def render_graph(G):
     elif tipo_mapa == "Jerárquico UD":
         hierarchical = {"enabled": True, "direction": "UD", "sortMethod": "directed"}
 
+    level_map = compute_hierarchy_levels(G)
+
     for name, attrs in G.nodes(data=True):
         domain = attrs.get("domain", "General")
         kind = attrs.get("kind", "concepto")
-        base_color = TYPE_COLOR_OVERRIDES.get(kind, DOMAIN_COLORS.get(domain, DOMAIN_COLORS["General"]))
         style = KIND_STYLES.get(kind, KIND_STYLES["concepto"])
         size = max(8, attrs.get("size", 12) + style.get("size_boost", 0))
         label = attrs.get("label", translate_name(name))
+
         if show_year_in_label and attrs.get("year"):
             label = f"{translate_name(name)} ({attrs['year']})"
+
+        level = level_map.get(name, 0)
+        bg_color = LEVEL_COLORS.get(level, LEVEL_COLORS[max(LEVEL_COLORS.keys())])
+        border_color = DOMAIN_COLORS.get(domain, DOMAIN_COLORS["General"])
+
+        # Mantener colores especiales para algunos tipos si quieres
+        if kind in TYPE_COLOR_OVERRIDES:
+            bg_color = TYPE_COLOR_OVERRIDES[kind]
+
         net.add_node(
             name,
             label=label,
-            title=attrs.get("full_title", name),
+            title=attrs.get("full_title", name) + f"<div style='margin-top:8px;font-size:12px;color:#555;'><b>Nivel:</b> {level}</div>",
             detail_html=attrs.get("detail_html", ""),
-            color=base_color,
+            color={
+                "background": bg_color,
+                "border": border_color,
+                "highlight": {
+                    "background": bg_color,
+                    "border": "#111827"
+                },
+                "hover": {
+                    "background": bg_color,
+                    "border": "#1f2937"
+                },
+            },
             shape=style.get("shape", "dot"),
             size=size,
             url=attrs.get("url"),
