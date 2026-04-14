@@ -2816,24 +2816,22 @@ waitForNetwork();
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
+from collections import deque
 
 def compute_hierarchy_levels(G):
     levels = {}
 
-    # raíces principales
+    # Raíces principales
     root_nodes = [
         n for n, attrs in G.nodes(data=True)
         if attrs.get("kind") == "principal"
     ]
 
-    # fallback: si no encuentra principales, usa nodos con in_degree 0
+    # Fallback si no hay principales
     if not root_nodes:
-        root_nodes = [n for n in G.nodes if G.in_degree(n) == 0]
+        root_nodes = [n for n in G.nodes if G.degree(n) > 0]
 
     for root in root_nodes:
-        if root not in levels or levels[root] > 0:
-            levels[root] = 0
-
         queue = deque([(root, 0)])
         visited = set()
 
@@ -2846,13 +2844,20 @@ def compute_hierarchy_levels(G):
             if current not in levels or level < levels[current]:
                 levels[current] = level
 
-            for neighbor in G.successors(current):
+            for neighbor in G.neighbors(current):
+                edge_attrs = G.get_edge_data(current, neighbor, default={})
+
+                # Ignora edges de cluster ocultos si existen
+                if edge_attrs.get("cluster"):
+                    continue
+
                 next_level = level + 1
                 if neighbor not in levels or next_level < levels[neighbor]:
                     levels[neighbor] = next_level
-                queue.append((neighbor, next_level))
 
-    # fallback final para nodos sueltos
+                if neighbor not in visited:
+                    queue.append((neighbor, next_level))
+
     for n in G.nodes:
         if n not in levels:
             levels[n] = 0
@@ -2885,14 +2890,13 @@ def render_graph(G):
         bg_color = LEVEL_COLORS.get(level, LEVEL_COLORS[max(LEVEL_COLORS.keys())])
         border_color = DOMAIN_COLORS.get(domain, DOMAIN_COLORS["General"])
 
-        # Mantener colores especiales para algunos tipos si quieres
         if kind in TYPE_COLOR_OVERRIDES:
             bg_color = TYPE_COLOR_OVERRIDES[kind]
 
         net.add_node(
             name,
             label=label,
-            title=attrs.get("full_title", name) + f"<div style='margin-top:8px;font-size:12px;color:#555;'><b>Nivel:</b> {level}</div>",
+            title=attrs.get("full_title", name),
             detail_html=attrs.get("detail_html", ""),
             color={
                 "background": bg_color,
