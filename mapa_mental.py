@@ -255,7 +255,7 @@ KIND_STYLES = {
     "recurso": {"shape": "star", "size_boost": -2},
     "dataset": {"shape": "hexagon", "size_boost": -2},
     "aplicacion": {"shape": "diamond", "size_boost": -1},
-    "funcion": {"shape": "ellipse", "size_boost": -4},
+    "funcion": {"shape": "box", "size_boost": -1},
     "contenedor": {"shape": "dot", "size_boost": -2},
 }
 
@@ -2255,33 +2255,113 @@ def add_library_function_nodes(graph_nodes, graph_edges):
             continue
 
         catalog = get_library_function_catalog(lib_name, attrs)
+        if not catalog:
+            continue
 
+        fn_group_node_name = f"{lib_name} :: Functions"
+        function_names = [entry["name"] for entry in catalog]
+
+        # Texto visible dentro de la burbuja
+        max_visible = 5
+        visible_names = function_names[:max_visible]
+        more_count = max(0, len(function_names) - max_visible)
+
+        bubble_label = "Functions"
+        if visible_names:
+            bubble_label += "\n" + "\n".join(visible_names)
+        if more_count > 0:
+            bubble_label += f"\n+{more_count} more"
+
+        # Tooltip hover corto
+        tooltip_html = f"""
+        <div style="max-width:320px;font-family:Arial,sans-serif;line-height:1.35;">
+          <div style="font-weight:700;font-size:15px;margin-bottom:6px;">
+            Functions · {html.escape(lib_name)}
+          </div>
+          <div style="font-size:13px;margin-bottom:6px;">
+            Grupo de funciones principales:
+          </div>
+          <ul style="margin:0 0 0 18px;padding:0;">
+            {''.join(f"<li>{html.escape(name)}</li>" for name in function_names[:10])}
+          </ul>
+          <div style="margin-top:8px;font-size:12px;color:#666;">
+            Haz click para ver descripción, usos y código de cada función.
+          </div>
+        </div>
+        """
+
+        # Panel inferior con acordeones
+        accordion_blocks = []
         for entry in catalog:
-            fn_node_name = f"{lib_name} :: {entry['name']}"
-            if fn_node_name not in new_nodes:
-                new_nodes[fn_node_name] = make_node(
-                    "funcion",
-                    attrs.get("domain", "General"),
-                    attrs.get("year"),
-                    entry["description"],
-                    size=9,
-                    url=attrs.get("url"),
-                    examples=[
-                        tr("Uso típico dentro de la librería.", "Typical usage inside the library."),
-                        tr("Se puede estudiar junto con el código de ejemplo del panel.", "It can be studied together with the code example in the panel."),
-                        tr(f"Pertenece a {lib_name}.", f"Belongs to {lib_name}."),
-                    ],
-                    tags=merge_unique_list(attrs.get("tags", []), [fn_node_name]),
-                    related_concepts=merge_unique_list(attrs.get("related_concepts", []), [lib_name]),
-                    related_subareas=attrs.get("related_subareas", []),
-                    code_example=entry.get("code"),
-                    title_en=entry["description"],
-                )
-                new_nodes[fn_node_name]["label"] = entry["name"]
-                new_nodes[fn_node_name]["label_en"] = entry["name"]
-            edge = (canonical_name(lib_name), canonical_name(fn_node_name), "función")
-            if edge not in new_edges:
-                new_edges.append(edge)
+            fn_name = entry.get("name", "")
+            fn_desc = entry.get("description", "")
+            fn_code = entry.get("code", "")
+
+            code_html = ""
+            if fn_code:
+                code_html = f"""
+                <div style="margin-top:10px;">
+                  <div style="font-weight:700;margin-bottom:6px;">Ejemplo</div>
+                  <pre style="white-space:pre-wrap;background:#111;color:#f8f9fa;padding:10px;border-radius:8px;overflow-x:auto;">{html.escape(fn_code)}</pre>
+                </div>
+                """
+
+            accordion_blocks.append(f"""
+            <details style="margin:10px 0;border:1px solid #d9d9d9;border-radius:10px;background:#fafafa;padding:0;">
+              <summary style="cursor:pointer;list-style:none;padding:12px 14px;font-weight:700;font-size:15px;">
+                {html.escape(fn_name)}
+              </summary>
+              <div style="padding:0 14px 14px 14px;">
+                <div style="margin-top:4px;line-height:1.45;">
+                  {html.escape(fn_desc)}
+                </div>
+                {code_html}
+              </div>
+            </details>
+            """)
+
+        detail_html = f"""
+        <div style="font-family:Arial,sans-serif;line-height:1.45;">
+          <div style="font-size:22px;font-weight:700;margin-bottom:8px;">
+            Functions · {html.escape(lib_name)}
+          </div>
+          <div style="margin-bottom:12px;">
+            Este nodo agrupa las funciones principales asociadas a <b>{html.escape(lib_name)}</b>.
+            En la burbuja se muestra una lista corta y aquí puedes desplegar el detalle de cada una.
+          </div>
+          <div style="margin-bottom:12px;">
+            <b>Funciones incluidas:</b> {", ".join(html.escape(name) for name in function_names)}
+          </div>
+          {''.join(accordion_blocks)}
+        </div>
+        """
+
+        if fn_group_node_name not in new_nodes:
+            new_nodes[fn_group_node_name] = make_node(
+                "funcion",
+                attrs.get("domain", "General"),
+                attrs.get("year"),
+                f"Grupo de funciones principales de {lib_name}.",
+                size=12,
+                url=attrs.get("url"),
+                examples=[
+                    tr("Vista agrupada de funciones principales.", "Grouped view of main functions."),
+                    tr("Haz click para abrir el panel con detalle por función.", "Click to open the panel with per-function details."),
+                    tr(f"Pertenece a {lib_name}.", f"Belongs to {lib_name}."),
+                ],
+                tags=merge_unique_list(attrs.get("tags", []), ["functions", lib_name]),
+                related_concepts=merge_unique_list(attrs.get("related_concepts", []), [lib_name]),
+                related_subareas=attrs.get("related_subareas", []),
+                title_en=f"Main function group for {lib_name}.",
+            )
+            new_nodes[fn_group_node_name]["label"] = bubble_label
+            new_nodes[fn_group_node_name]["label_en"] = bubble_label
+            new_nodes[fn_group_node_name]["full_title"] = tooltip_html
+            new_nodes[fn_group_node_name]["detail_html"] = detail_html
+
+        edge = (canonical_name(lib_name), canonical_name(fn_group_node_name), "funciones")
+        if edge not in new_edges:
+            new_edges.append(edge)
 
     return new_nodes, new_edges
 
