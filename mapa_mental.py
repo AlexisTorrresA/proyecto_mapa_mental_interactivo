@@ -261,12 +261,12 @@ KIND_STYLES = {
 
 DOMAIN_COLORS = {
     "Inteligencia Artificial": "#f4d35e",
-    "Ingeniería de Software": "#06d6a0",
-    "Cloud Computing": "#ffd166",
-    "Ciberseguridad": "#ff6b6b",
-    "Robótica e IoT": "#9b5de5",
-    "Computación Cuántica": "#7b6cff",
-    "General": "#adb5bd",
+   # "Ingeniería de Software": "#06d6a0",
+   # "Cloud Computing": "#ffd166",
+   # "Ciberseguridad": "#ff6b6b",
+   # "Robótica e IoT": "#9b5de5",
+   # "Computación Cuántica": "#7b6cff",
+     "General": "#adb5bd",
 }
 
 TYPE_COLOR_OVERRIDES = {
@@ -576,11 +576,11 @@ def add_taxonomy_branch(domain_root, subarea, concept_items=None, tool_items=Non
 # =========================================================
 MAIN_DOMAINS = [
     ("Inteligencia Artificial", 1956, "Campo general que crea sistemas capaces de realizar tareas que normalmente requieren inteligencia humana."),
-    ("Ingeniería de Software", 1968, "Disciplina para diseñar, construir, probar y mantener sistemas de software."),
-    ("Cloud Computing", 2006, "Uso de infraestructura, plataformas y servicios remotos para desarrollar y operar sistemas."),
-    ("Ciberseguridad", 1970, "Protección de sistemas, redes, datos y aplicaciones frente a amenazas."),
-    ("Robótica e IoT", 1961, "Integración de hardware, sensores, control, conectividad e inteligencia en sistemas físicos."),
-    ("Computación Cuántica", 1980, "Paradigma de cómputo basado en qubits, superposición, entrelazamiento y puertas cuánticas."),
+   # ("Ingeniería de Software", 1968, "Disciplina para diseñar, construir, probar y mantener sistemas de software."),
+   # ("Cloud Computing", 2006, "Uso de infraestructura, plataformas y servicios remotos para desarrollar y operar sistemas."),
+   # ("Ciberseguridad", 1970, "Protección de sistemas, redes, datos y aplicaciones frente a amenazas."),
+   # ("Robótica e IoT", 1961, "Integración de hardware, sensores, control, conectividad e inteligencia en sistemas físicos."),
+   # ("Computación Cuántica", 1980, "Paradigma de cómputo basado en qubits, superposición, entrelazamiento y puertas cuánticas."),
 ]
 
 for name, year, title in MAIN_DOMAINS:
