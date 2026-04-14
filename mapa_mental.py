@@ -2708,35 +2708,42 @@ graph_nodes, graph_edges = add_library_function_nodes(graph_nodes, graph_edges)
 
 G_full = build_graph(graph_nodes, graph_edges)
 G_full = add_similarity_cluster_edges(G_full)
-
 all_domains = sorted({attrs.get("domain", "General") for attrs in graph_nodes.values()})
 all_kinds = sorted({attrs.get("kind", "concepto") for attrs in graph_nodes.values()})
 legend_kinds = [k for k in all_kinds if k != "principal"]
 
-all_subareas = sorted({
-    n for n, attrs in graph_nodes.items()
-    if attrs.get("kind") == "subarea"
-})
+DEFAULT_DOMAIN = "Inteligencia Artificial"
 
 filter_row = st.columns([1.15, 1.5, 1.5, 1.9], gap="medium")
 with filter_row[0]:
     st.caption(tr("Exploración", "Exploration"))
+
 with filter_row[1]:
-    selected_domains = st.multiselect(
+    selected_domain = st.selectbox(
         tr("Filtrar por dominio", "Filter by domain"),
         all_domains,
-        default=[],
+        index=all_domains.index(DEFAULT_DOMAIN) if DEFAULT_DOMAIN in all_domains else 0,
         format_func=lambda v: translate_name(v),
-        key="top_filter_domains",
+        key="top_filter_domain",
     )
+
+selected_domains = [selected_domain]
+
+available_subareas = sorted({
+    n for n, attrs in graph_nodes.items()
+    if attrs.get("kind") == "subarea"
+    and attrs.get("domain") == selected_domain
+})
+
 with filter_row[2]:
     selected_subareas = st.multiselect(
         tr("Filtrar por subárea", "Filter by subarea"),
-        all_subareas,
+        available_subareas,
         default=[],
         format_func=lambda v: translate_name(v),
         key="top_filter_subareas",
     )
+
 with filter_row[3]:
     selected_kinds = st.multiselect(
         tr("Filtrar por tipo", "Filter by type"),
