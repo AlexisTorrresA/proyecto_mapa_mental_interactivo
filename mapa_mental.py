@@ -2870,9 +2870,29 @@ def render_graph(G):
     net = Network(height="780px", width="100%", bgcolor="#ffffff", font_color="#111111")
     hierarchical = None
     if tipo_mapa == "Jerárquico LR":
-        hierarchical = {"enabled": True, "direction": "LR", "sortMethod": "directed"}
+        hierarchical = {
+            "enabled": True,
+            "direction": "LR",
+            "sortMethod": "directed",
+            "levelSeparation": 260,
+            "nodeSpacing": 220,
+            "treeSpacing": 260,
+            "blockShifting": True,
+            "edgeMinimization": True,
+            "parentCentralization": True,
+        }
     elif tipo_mapa == "Jerárquico UD":
-        hierarchical = {"enabled": True, "direction": "UD", "sortMethod": "directed"}
+        hierarchical = {
+            "enabled": True,
+            "direction": "UD",
+            "sortMethod": "directed",
+            "levelSeparation": 220,
+            "nodeSpacing": 190,
+            "treeSpacing": 240,
+            "blockShifting": True,
+            "edgeMinimization": True,
+            "parentCentralization": True,
+        }
 
     level_map = compute_hierarchy_levels(G)
 
@@ -2882,6 +2902,14 @@ def render_graph(G):
         style = KIND_STYLES.get(kind, KIND_STYLES["concepto"])
         size = max(8, attrs.get("size", 12) + style.get("size_boost", 0))
         label = attrs.get("label", translate_name(name))
+
+        if len(label) > 16 and "\n" not in label:
+            if " de " in label:
+                label = label.replace(" de ", "\nde ", 1)
+            elif " " in label:
+                parts = label.split(" ")
+                mid = len(parts) // 2
+                label = " ".join(parts[:mid]) + "\n" + " ".join(parts[mid:])
 
         if show_year_in_label and attrs.get("year"):
             label = f"{translate_name(name)} ({attrs['year']})"
