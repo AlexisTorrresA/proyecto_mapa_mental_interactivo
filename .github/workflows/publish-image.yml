@@ -1,0 +1,76 @@
+name: Build and publish Y700 image
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/alexistorrresa/mapa-mental
+
+jobs:
+  test-and-publish:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Validate Python source
+        run: python -m compileall -q mapa_mental.py
+
+      - name: Smoke test Streamlit
+        shell: bash
+        run: |
+          set -euo pipefail
+          streamlit run mapa_mental.py \
+            --server.headless=true \
+            --server.address=127.0.0.1 \
+            --server.port=8501 > /tmp/mapa-mental-streamlit.log 2>&1 &
+          APP_PID=$!
+          trap 'kill "$APP_PID" 2>/dev/null || true' EXIT
+
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:8501/_stcore/health >/dev/null; then
+              echo "Streamlit healthcheck OK"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          cat /tmp/mapa-mental-streamlit.log
+          exit 1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:main
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
