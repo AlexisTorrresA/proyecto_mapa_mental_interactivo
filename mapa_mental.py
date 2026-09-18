@@ -2867,7 +2867,7 @@ def compute_hierarchy_levels(G):
 
 
 def render_graph(G):
-    net = Network(height="780px", width="100%", bgcolor="#ffffff", font_color="#111111")
+    net = Network(height="780px", width="100%", bgcolor="#ffffff", font_color="#111111", cdn_resources="in_line")
     hierarchical = None
     if tipo_mapa == "Jerárquico LR":
         hierarchical = {
