@@ -12,7 +12,7 @@ command:
   - --server.headless=true
 public:
   enabled: true
-  subdomain: mapa-mental
+  subdomain: mapa-mental-ia
 healthcheck:
   path: /_stcore/health
 database:
