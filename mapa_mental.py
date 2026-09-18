@@ -2999,7 +2999,13 @@ def render_graph(G):
 
     tmp_dir = tempfile.mkdtemp()
     html_path = os.path.join(tmp_dir, "mental_map.html")
-    net.save_graph(html_path)
+
+    # Generar el HTML directamente evita que PyVis intente crear ./lib
+    # en /app, que es de solo lectura para el runtime no-root del Y700.
+    html_content = net.generate_html(notebook=False)
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
     inject_click_behavior(html_path)
 
     with open(html_path, "r", encoding="utf-8") as f:
