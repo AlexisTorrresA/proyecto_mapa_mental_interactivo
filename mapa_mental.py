@@ -2744,6 +2744,33 @@ body {{
   white-space: pre-wrap;
   overflow-x: auto;
 }}
+
+/* Responsive: en móviles el mapa queda arriba y el detalle abajo.
+   Evita que el panel lateral de 350px deje al grafo reducido a una franja. */
+@media (max-width: 760px) {{
+  html, body {{
+    overflow: hidden;
+  }}
+
+  #mynetwork {{
+    width: 100% !important;
+    height: 500px !important;
+    border-radius: 12px 12px 0 0;
+  }}
+
+  #selected-node-panel {{
+    position: absolute;
+    top: 500px;
+    left: 0;
+    right: auto;
+    width: 100%;
+    height: 280px;
+    padding: 14px 16px;
+    border-left: 0;
+    border-top: 1px solid #dee2e6;
+    background: #fafafa;
+  }}
+}}
 </style>
 """
 
