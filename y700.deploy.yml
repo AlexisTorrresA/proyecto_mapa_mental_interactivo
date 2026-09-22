@@ -4,23 +4,26 @@ image: ghcr.io/alexistorrresa/mapa-mental:main
 container_name: y700-mapa-mental
 container_port: 8501
 command:
-  - streamlit
-  - run
-  - mapa_mental.py
-  - --server.port=8501
-  - --server.address=0.0.0.0
-  - --server.headless=true
+  - /bin/sh
+  - -c
+  - >-
+    python scripts/init_db.py &&
+    exec streamlit run mapa_mental.py
+    --server.port=8501
+    --server.address=0.0.0.0
+    --server.headless=true
 public:
   enabled: true
   subdomain: mapa-mental-ia
 healthcheck:
   path: /_stcore/health
 database:
-  postgres: false
-  name: mapa_mental
+  postgres: true
+  name: mapa_mental_ia
 secrets:
   required: []
-  optional: []
+  optional:
+    - MAPA_ADMIN_PASSWORD
 resources:
   memory: 1g
-  cpus: 1.0
+  cpus: 1.25
