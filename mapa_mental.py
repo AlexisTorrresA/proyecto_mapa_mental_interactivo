@@ -2948,10 +2948,19 @@ def render_graph(G):
         if kind in TYPE_COLOR_OVERRIDES:
             bg_color = TYPE_COLOR_OVERRIDES[kind]
 
+        # El tooltip nativo de vis-network debe contener solo texto.
+        # El HTML enriquecido se muestra exclusivamente en el panel lateral
+        # mediante detail_html al hacer click. Si se pasa full_title aquí,
+        # vis-network puede mostrar las etiquetas <div> como texto literal.
+        tooltip_text = translate_name(name)
+        description = node_title(attrs)
+        if description and description != tooltip_text:
+            tooltip_text = f"{tooltip_text}\n{description}"
+
         net.add_node(
             name,
             label=label,
-            title=attrs.get("full_title", name),
+            title=tooltip_text,
             detail_html=attrs.get("detail_html", ""),
             color={
                 "background": bg_color,
