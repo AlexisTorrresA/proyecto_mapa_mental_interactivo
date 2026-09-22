@@ -16,6 +16,13 @@ import streamlit as st
 import streamlit.components.v1 as components
 from pyvis.network import Network
 
+from graph_admin import (
+    render_admin_login_sidebar,
+    render_admin_panel,
+    render_database_status_sidebar,
+)
+from graph_store import GraphStore
+
 st.set_page_config(
     page_title="Interactive Technology Concept Map",
     layout="wide",
@@ -2788,45 +2795,90 @@ body {{
 
     js = """
 <script type="text/javascript">
-function waitForNetwork() {
-  if (typeof network === "undefined" || typeof nodes === "undefined") {
-    setTimeout(waitForNetwork, 400);
-    return;
+(function () {
+  const defaultTitle = document.querySelector("#selected-node-panel .panel-title")?.textContent || "Detalle del nodo";
+  const defaultContent = document.getElementById("selected-node-content")?.innerHTML || "";
+
+  function waitForNetwork() {
+    if (typeof network === "undefined" || typeof nodes === "undefined") {
+      setTimeout(waitForNetwork, 150);
+      return;
+    }
+
+    function setPanelTitle(value) {
+      const title = document.querySelector("#selected-node-panel .panel-title");
+      if (title) title.textContent = value || defaultTitle;
+    }
+
+    function setPanelHtml(value) {
+      const panel = document.getElementById("selected-node-content");
+      if (panel) panel.innerHTML = value || defaultContent;
+    }
+
+    function setPanelText(value) {
+      const panel = document.getElementById("selected-node-content");
+      if (panel) panel.textContent = value || "";
+    }
+
+    function showNode(nodeId) {
+      try {
+        const node = nodes.get(nodeId);
+        if (!node) return;
+
+        setPanelTitle(node.label || String(nodeId));
+        if (node.detail_html) {
+          setPanelHtml(String(node.detail_html));
+        } else if (node.title) {
+          setPanelText(String(node.title));
+        } else {
+          setPanelText(String(node.label || nodeId));
+        }
+
+        if (window.matchMedia && window.matchMedia("(max-width: 760px)").matches) {
+          const detailPanel = document.getElementById("selected-node-panel");
+          if (detailPanel) {
+            setTimeout(() => detailPanel.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+          }
+        }
+      } catch (error) {
+        console.error("No fue posible mostrar el detalle del nodo", error);
+        setPanelTitle("Detalle del nodo");
+        setPanelText("No fue posible cargar el detalle de este nodo.");
+      }
+    }
+
+    network.on("click", function (params) {
+      if (params && params.nodes && params.nodes.length > 0) {
+        showNode(params.nodes[0]);
+      }
+    });
+
+    network.on("doubleClick", function (params) {
+      if (!params || !params.nodes || params.nodes.length === 0) return;
+      try {
+        const node = nodes.get(params.nodes[0]);
+        const url = node && node.url ? String(node.url) : "";
+        if (/^https?:\\/\\//i.test(url)) {
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
+      } catch (error) {
+        console.error("No fue posible abrir el recurso del nodo", error);
+      }
+    });
+
+    network.once("stabilizationIterationsDone", function () {
+      try {
+        network.fit({ animation: { duration: 350, easingFunction: "easeInOutQuad" } });
+      } catch (_) {}
+    });
+
+    window.addEventListener("resize", function () {
+      try { network.redraw(); } catch (_) {}
+    });
   }
 
-  function setPanel(contentHtml) {
-    const panel = document.getElementById("selected-node-content");
-    if (panel) {
-      panel.innerHTML = contentHtml;
-    }
-  }
-
-  network.on("click", function(params) {
-    if (!params.nodes || params.nodes.length === 0) return;
-    const nodeId = params.nodes[0];
-    const node = nodes.get(nodeId);
-
-    if (node && node.detail_html) {
-      setPanel(node.detail_html);
-    } else if (node && node.title) {
-      setPanel(
-        "<pre style='white-space:pre-wrap;font-family:Arial,sans-serif;'>" +
-        node.title +
-        "</pre>"
-      );
-    }
-  });
-
-  network.on("doubleClick", function(params) {
-    if (!params.nodes || params.nodes.length === 0) return;
-    const nodeId = params.nodes[0];
-    const node = nodes.get(nodeId);
-    if (node && node.url) {
-      window.open(node.url, "_blank");
-    }
-  });
-}
-waitForNetwork();
+  waitForNetwork();
+})();
 </script>
 """
 
@@ -2894,6 +2946,10 @@ def compute_hierarchy_levels(G):
 
 
 def render_graph(G):
+    if G.number_of_nodes() == 0:
+        st.info(tr("No hay nodos para los filtros seleccionados.", "No nodes match the selected filters."))
+        return
+
     net = Network(height="780px", width="100%", bgcolor="#ffffff", font_color="#111111", cdn_resources="in_line")
     hierarchical = None
     if tipo_mapa == "Jerárquico LR":
@@ -3042,6 +3098,32 @@ def render_graph(G):
 
 
 # =========================================================
+# Persistencia PostgreSQL administrada por Y700
+# =========================================================
+seed_nodes = dict(nodes)
+seed_edges = list(edges)
+graph_store = None
+database_fallback_message = None
+
+try:
+    graph_store = GraphStore.from_env(required=False)
+    if graph_store is not None:
+        graph_store.init_schema()
+        graph_store.seed_if_empty(seed_nodes, seed_edges, seed_version="taxonomy-2026-09")
+        nodes, edges = graph_store.load_graph()
+except Exception as exc:
+    # El modo fallback mantiene la app utilizable en desarrollo y en CI sin PostgreSQL.
+    # En Y700 DATABASE_URL está disponible y el init_db previo hace que este caso sea excepcional.
+    nodes, edges = seed_nodes, seed_edges
+    database_fallback_message = str(exc)
+    graph_store = None
+
+render_database_status_sidebar(graph_store, database_fallback_message)
+admin_authenticated = render_admin_login_sidebar(graph_store)
+if graph_store is not None and admin_authenticated:
+    render_admin_panel(graph_store, nodes)
+
+# =========================================================
 # Construcción y filtros del grafo
 # =========================================================
 graph_nodes = dict(nodes)
@@ -3095,7 +3177,36 @@ with filter_row[3]:
         key="top_filter_kinds",
     )
 
+search_query = st.text_input(
+    tr("Buscar en el submapa", "Search this submap"),
+    placeholder=tr("Ej.: transformers, visión, RAG, Qiskit…", "E.g. transformers, vision, RAG, Qiskit…"),
+    key="graph_search_query",
+)
+
 G_filtered = filter_graph(G_full, selected_kinds, selected_domains, selected_subareas)
+
+if search_query.strip():
+    query = search_query.strip().lower()
+    matching_nodes = []
+    for node_name, attrs in G_filtered.nodes(data=True):
+        haystack = " ".join(
+            str(value or "")
+            for value in [
+                node_name,
+                attrs.get("label"),
+                attrs.get("label_en"),
+                attrs.get("title"),
+                attrs.get("title_en"),
+                " ".join(attrs.get("tags", []) or []),
+            ]
+        ).lower()
+        if query in haystack:
+            matching_nodes.append(node_name)
+
+    visible_from_search = set(matching_nodes)
+    for node_name in matching_nodes:
+        visible_from_search.update(G_filtered.neighbors(node_name))
+    G_filtered = G_filtered.subgraph(visible_from_search).copy()
 
 # =========================================================
 # Layout principal
