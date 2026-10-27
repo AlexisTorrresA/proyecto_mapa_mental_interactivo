@@ -22,6 +22,7 @@ from graph_admin import (
     render_database_status_sidebar,
 )
 from graph_store import GraphStore
+from atlas_ia import render_atlas
 
 st.set_page_config(
     page_title="Interactive Technology Concept Map",
@@ -3135,6 +3136,12 @@ if graph_store is not None and admin_authenticated:
 # =========================================================
 # Construcción y filtros del grafo
 # =========================================================
+st.sidebar.markdown("---")
+atlas_enabled = st.sidebar.toggle("✦ Nuevo Atlas IA (experimental)", value=False, key="atlas_enabled")
+if atlas_enabled:
+    render_atlas(nodes, edges)
+    st.stop()
+
 graph_nodes = dict(nodes)
 graph_edges = list(edges)
 graph_nodes, graph_edges = add_library_function_nodes(graph_nodes, graph_edges)
