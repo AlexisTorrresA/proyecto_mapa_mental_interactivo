@@ -301,6 +301,10 @@ TYPE_COLOR_OVERRIDES = {
 # =========================================================
 # Sidebar
 # =========================================================
+st.sidebar.header("🧠 Atlas IA")
+atlas_enabled = st.sidebar.toggle("Usar Atlas IA moderno", value=True, key="atlas_enabled")
+st.sidebar.caption("Desactiva para utilizar el mapa clásico.")
+st.sidebar.markdown("---")
 st.sidebar.header(tr("Configuración del mapa", "Map settings"))
 
 tipo_mapa = st.sidebar.selectbox(
@@ -3136,8 +3140,6 @@ if graph_store is not None and admin_authenticated:
 # =========================================================
 # Construcción y filtros del grafo
 # =========================================================
-st.sidebar.markdown("---")
-atlas_enabled = st.sidebar.toggle("✦ Nuevo Atlas IA (experimental)", value=False, key="atlas_enabled")
 if atlas_enabled:
     render_atlas(nodes, edges)
     st.stop()
