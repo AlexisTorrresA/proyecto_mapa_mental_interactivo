@@ -22,7 +22,7 @@ from graph_admin import (
     render_database_status_sidebar,
 )
 from graph_store import GraphStore
-from atlas_ia import render_atlas
+from atlas_ia import render_full_atlas
 
 st.set_page_config(
     page_title="Interactive Technology Concept Map",
@@ -3141,7 +3141,7 @@ if graph_store is not None and admin_authenticated:
 # Construcción y filtros del grafo
 # =========================================================
 if atlas_enabled:
-    render_atlas(nodes, edges)
+    render_full_atlas(nodes, edges, graph_store)
     st.stop()
 
 graph_nodes = dict(nodes)
