@@ -172,3 +172,28 @@ def render_atlas(nodes: dict, edges: list) -> None:
                              if isinstance(attrs.get("year"), int)], key=lambda x: x[1]["year"])
         for key, attrs in historical[:200]:
             st.markdown(f"**{attrs['year']}** · {attrs.get('label') or key}")
+
+
+def render_full_atlas(nodes: dict, edges: list, graph_store=None) -> None:
+    """Unified Atlas navigation: concept map + persistent technical catalogs."""
+    from catalog_store import CatalogStore
+    from catalog_ui import library_panel, model_panel, summary_panel
+
+    catalog = None
+    if graph_store is not None:
+        try:
+            catalog = CatalogStore(graph_store.engine)
+            catalog.init_schema()
+            catalog.seed()
+        except Exception as exc:
+            st.warning(f"El catálogo PostgreSQL no está disponible ({type(exc).__name__}).")
+            catalog = None
+    tabs = st.tabs(["🧠 Mapa de conceptos", "🐍 Glosario Python", "🤗 Modelos Hugging Face", "📊 Estadísticas"])
+    with tabs[0]:
+        render_atlas(nodes, edges)
+    with tabs[1]:
+        library_panel(catalog)
+    with tabs[2]:
+        model_panel(catalog)
+    with tabs[3]:
+        summary_panel(catalog)

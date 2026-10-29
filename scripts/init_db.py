@@ -6,6 +6,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from graph_store import GraphStore
+from catalog_store import CatalogStore
 
 
 def main() -> None:
@@ -13,6 +14,8 @@ def main() -> None:
     assert store is not None
     store.init_schema()
     store.healthcheck()
+    added = CatalogStore(store.engine).seed()
+    print(f"Catálogo Python/HF: registros nuevos={added}")
     stats = store.stats()
     print(f"PostgreSQL OK · nodos={stats.nodes} · relaciones={stats.edges}")
 
