@@ -234,14 +234,26 @@ def render_atlas(nodes: dict, edges: list):
     domains = ["Todas"] + [x for x in current_domains if any(
         x == a.get("domain") for a in nodes.values())]
     default_area = domains.index("Inteligencia Artificial") if "Inteligencia Artificial" in domains else 0
-    top = st.columns([1.3, 1.2, 1, 1])
+    top = st.columns([1.25, 2.3])
     with top[0]:
         area = st.selectbox("Dominio", domains, index=default_area, key="atlas_domain")
     with top[1]:
-        mode = st.radio("Visualización", ["Jerarquía", "Relaciones"], horizontal=True, key="atlas_mode")
-    with top[2]:
+        mode = st.radio("Visualización", ["Didáctico", "Jerarquía", "Relaciones"],
+                        horizontal=True, key="atlas_mode")
+    if mode == "Didáctico" and area == "Inteligencia Artificial":
+        from atlas_didactic import render_didactic
+        st.caption("Vista tipo ficha de estudio. Pulsa un rectángulo o círculo para abrir sus conexiones y definición. "
+                   "Para ver todo el grafo utiliza Jerarquía o Relaciones.")
+        render_didactic(nodes, edges)
+        return
+    if mode == "Didáctico":
+        st.info("La ficha didáctica está preparada para Machine Learning. "
+                "Aquí se presenta la jerarquía del dominio seleccionado.")
+        mode = "Jerarquía"
+    settings = st.columns(2)
+    with settings[0]:
         depth = st.slider("Niveles de proximidad", 1, 4, 2, key="atlas_depth")
-    with top[3]:
+    with settings[1]:
         limit = st.slider("Límite de nodos", 15, 160, 65, step=5, key="atlas_limit")
     hide_assets = not st.toggle("Mostrar también herramientas, librerías, recursos y datasets",
                                  value=False, key="atlas_assets")

@@ -34,7 +34,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Validate Python source
-        run: python -m compileall -q mapa_mental.py graph_store.py graph_admin.py atlas_ia.py catalog_store.py knowledge_catalog.py catalog_ui.py knowledge_taxonomy.py taxonomy_store.py scripts tests
+        run: python -m compileall -q mapa_mental.py graph_store.py graph_admin.py atlas_ia.py catalog_store.py knowledge_catalog.py catalog_ui.py knowledge_taxonomy.py taxonomy_store.py atlas_didactic.py didactic_catalog.py scripts tests
 
       - name: Run tests
         run: pytest -q
